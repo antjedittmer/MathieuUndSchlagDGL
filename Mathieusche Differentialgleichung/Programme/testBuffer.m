@@ -1,8 +1,8 @@
 clc; clear; close all;
 
 %% Lade die Daten und erstelle den Table
-% matFolder = fullfile(pwd,'dataFolder'); % mat Datei im dataFolder
-matFolder = fullfile(pwd);% mat Datei im gleichen Ordner
+matFolder = fullfile(pwd,'dataFolder'); % mat Datei im dataFolder
+% matFolder = fullfile(pwd);% mat Datei im gleichen Ordner
 matName = fullfile(matFolder, 'STRUTTscheKarte_D1dot5e-01_tSpanUsed0.mat'); 
 
 load(matName,'Char*','plotwert*', 'nu*');
@@ -40,6 +40,9 @@ for idx = 2: length(tmp)
     buffer = max(tmp(idx),buffer); % Maximum speichern
     bufferNeg = min(tmpNeg(idx),bufferNeg); % Minimum speichern
 end
+
+%% test angle
+
                
 %% Plot fuer mit atan berechnete nicht-korrigierte und korrigierte Werte
 % Ueberpruefe die Verlaeufe mit atan nicht-korrigiert und korrigiert

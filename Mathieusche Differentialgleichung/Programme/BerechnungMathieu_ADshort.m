@@ -6,7 +6,7 @@ clc; clear; close all;
 
 loadMat = 0;  % mat-file laden, wenn Ergebnisse mit gleichem D vorhanden
 
-SW = 0.1; %stepwidth
+SW = 0.5; %stepwidth
 unt0 = 0; SW;
 untC = 0; SW;
 ob0 = 9;
@@ -33,7 +33,7 @@ end
 Nz = 2;
 
 % Parameter
-DVec = [0.15; 0.001; 0.2];
+DVec = 0.001; %[0.15; 0.001; 0.2];
 
 % strDVec = {sprintf('%2.2f',DVec(1)); sprintf('%2.3f',DVec(2)); ...
 %     sprintf('%2.1f',DVec(3))};
@@ -73,7 +73,7 @@ for dIdx = 1: length(DVec)
     n = 0;
     cntN = 1;
 
-    buffer = 0;
+    buffer.Pos = 0;
     bufferNeg = 0;
     vecSwitch = zeros(lenNu02,1);
 
@@ -109,41 +109,18 @@ for dIdx = 1: length(DVec)
                 p = [1, -(Monodromie(1,1) + Monodromie(2,2)), ...
                     Monodromie(1,1)*Monodromie(2,2)-Monodromie(1,2)*Monodromie(2,1)];
                 eP = roots(p);
-                eBetr = abs(eP);
+                %eBetr = abs(eP);
 
                 %% Charakteristische Exponenten
                 if nu_C2 == nu_02
-                    RealEig = 1/T * log(eBetr);
-                    ImagEig = 1/T * atan(imag(eP)./real(eP));
-                    [ImagEigSort,idx] = sort(ImagEig);
 
-                    % Imaginaeranteil kontinuierlich steigend oder fallend
-                    tmp = ImagEigSort(2);
-                    tmpNeg = ImagEigSort(1);
-
-                    if buffer <= tmp || (abs(tmp) < 10^-5) % Wert uebernehmen
-                        ImagEigCorrected = tmp; % steigender pos. Wert
-                        ImagEigCorrectedNeg = tmpNeg;  % fallender neg. Wert
-                        buffer = 0;
-                        bufferNeg = 0;
-                    else  % 'korrigierten' Wert nehmen fuer kontinuierlichen Verlauf
-                        % Wird der 'else'-Zweig getriggert, ist der buffer
-                        % bei 90 Grad (1.57 rad). Der positive Imaginaerteil ist damit
-                        % die Summe aus 180 Grad und dem negativen Winkel, dessen 
-                        % Wert von -90 Grad zu 0 Grad laeuft. 
-                        ImagEigCorrected = 2*buffer + tmpNeg; % korrigierter pos. Wert
-                        ImagEigCorrectedNeg = 2*bufferNeg + tmp; % korrigierter neg. Wert
-                        vecSwitch(oidx)= 1;
-
-                    end
-                    % Buffer ueberschreiben mit aktuellem Wert
-                    buffer = max(tmp,buffer); % Maximum speichern
-                    bufferNeg = min(tmpNeg,bufferNeg); % Minimum speichern
-
-                    % Additionsterm n*2*pi/T
+                    % Berechne Real-und Imaginaerteile der Exponenten 
+                    [ImagEigCorrected, ImagEigCorrectedNeg, buffer, Eig] = correctImagValuesEig(eP,buffer,T);
+                 
+                    % % Additionsterm n*2*pi/T
                     if cntN <= length(nuCSwitchVec) && ... % Sicherheitscheck, damit n nicht groesser wird als die Anzahl der 'Switchstellen'
                             nu_C2 > nuCSwitchVec(cntN) && ... % n nur bei erreichen der Switchstellen umstellen
-                            abs(RealEig(1) - RealEig(2))> eps % die Realteile muessen gleich sein
+                            abs(Eig.Real(1) - Eig.Real(2))> eps % die Realteile muessen gleich sein
                         n =  n + 0.5;
                         cntN = cntN+1;
                     end
@@ -151,7 +128,7 @@ for dIdx = 1: length(DVec)
                     nAdd = n*2*pi/T;
                     ImagEigSortN = [ImagEigCorrectedNeg, ImagEigCorrected] + [-nAdd,nAdd];
 
-                    CharEx(oidx,:) = [nu_02, nu_C2, RealEig', min(ImagEigSort), max(ImagEigSort), ImagEigSortN, eP'];
+                    CharEx(oidx,:) = [nu_02, nu_C2, Eig.Real', min(Eig.ImagSort), max(Eig.ImagSort), ImagEigSortN, eP'];
                     oidx = oidx + 1;
 
                 end
@@ -159,7 +136,7 @@ for dIdx = 1: length(DVec)
                 %% 1=stabile Kombinationen von nu_02 und nu_C2 basierend auf den
                 % charakteristic Mutiplikators
 
-                if eBetr(1)<1 && eBetr(2)<1
+                if  max(abs(eP)) < 1 %eBetr(1)<1 && eBetr(2)<1
                     b = 1;
                     plotwertstabil(lidx,:) = [nu_02,nu_C2,b];
                 end
@@ -177,9 +154,9 @@ for dIdx = 1: length(DVec)
     %%
 
     try
-        %[nu_02, nu_C2, RealEig', min(ImagEigSort), max(ImagEigSort), ImagEigSortN, eP'];
+        %[nu_02, nu_C2, Eig.Real', min(ImagEigSort), max(ImagEigSort), ImagEigSortN, eP'];
         CharExTable = array2table(CharEx(:,[1:4,7,8]),'VariableNames',...
-            {'nu02','nu_C2','RealEig1','RealEig2', 'ImagEig1', 'ImagEig2'});
+            {'nu02','nu_C2','Eig.Real1','Eig.Real2', 'ImagEig1', 'ImagEig2'});
 
         CharExTable.RealCharExp1 = real(CharEx(:,9));
         CharExTable.ImagCharExp1 = imag(CharEx(:,9));
@@ -187,7 +164,7 @@ for dIdx = 1: length(DVec)
         CharExTable.ImagCharExp2 = imag(CharEx(:,10));
 
         % CharAllTable = array2table(CharEx(:,[1:4,7,8,9,10]),'VariableNames',...
-        %    {'nu02','nu_C2','RealEig1','RealEig2', 'ImagEig1', 'ImagEig2','CharExp1','CharExp2'});
+        %    {'nu02','nu_C2','Eig.Real1','Eig.Real2', 'ImagEig1', 'ImagEig2','CharExp1','CharExp2'});
 
 
         excelfilename = strrep(fileName,'.mat','CharExAll.xlsx');

@@ -6,7 +6,7 @@ clc ; clear variables ; close all;
 
 Auswahl=100;    %fuer Fehlermeldung, wenn keine Auswahl getroffen wurde
 true=1;         %fuer Detektion von mu-Wert bei Trennung der Realtele
-SW = 0.01;      %Schrittweite der Berechnung, Genauigkeit
+SW = 0.2; %0.01;      %Schrittweite der Berechnung, Genauigkeit
 l=1;            %Zaehlvariable
 t0 = 0.0;       %Anfangszeitpunkt t0
 T = 2*pi;       %Periodendauer
@@ -58,17 +58,17 @@ nu0=Par(20,Auswahl);
 %Grenzen fuer mu
 MuMin = 0;
 MuMax = 1.4;
+lenMu = length(MuMin:SW:MuMax);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Vorbereitung der in den Schleifen zu fuellenden Arrays zwecks Programmbeschleunigung
 
 Diagonal=diag(ones(AnzGl,1));
 Monodromie = zeros(AnzGl);
-Monodromie3D = zeros(AnzGl);
-Monodromie3D(:,:,length(MuMin:SW:MuMax)) = zeros(AnzGl);
-CharMult = zeros(length(MuMin:SW:MuMax),AnzGl+1);
-CharExRe = zeros(length(MuMin:SW:MuMax),AnzGl);
-CharExIm = zeros(length(MuMin:SW:MuMax),AnzGl);
+Monodromie3D = zeros(AnzGl,AnzGl,lenMu); 
+CharMult = zeros(lenMu,AnzGl+1);
+CharExRe = zeros(lenMu,AnzGl);
+CharExIm = zeros(lenMu,AnzGl);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Einlesen der A-Matrix mit mu=0 fuer die exakte Loesung im Schwebeflug
@@ -138,13 +138,16 @@ for m = MuMin:SW:MuMax
     l=l+1;
 end
 
+[eigval3,eigvec3] = eigenshuffle3D(Monodromie3D);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Korrektur der Ergebnisse
 
+
+
 CharExIm = (1/T) * unwrap(CharExIm);
 
-for k=1:length(MuMin:SW:MuMax)
+for k=1:lenMu
     CharExIm(k,:) = CharExIm(k,:) + freqInt;
 end
 

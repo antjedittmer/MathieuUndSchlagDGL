@@ -3,7 +3,8 @@ function  [ImagEigCorrected, ImagEigCorrectedNeg,buffer,Eig] = correctImagValues
 % correctImagValues korrigiert die Werte
 
 Eig.Real = 1/T * log(abs(eP));
-Eig.Imag= 1/T * atan(imag(eP)./real(eP));
+Eig.Imag = 1/T * atan(imag(eP)./real(eP));
+Eig.ImagAngle = 1/T * angle(imag(eP)./real(eP));
 Eig.ImagSort = sort(Eig.Imag);
 
 % Imaginaeranteil kontinuierlich steigend oder fallend
