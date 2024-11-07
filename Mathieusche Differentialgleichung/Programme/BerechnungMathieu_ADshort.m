@@ -6,7 +6,7 @@ clc; clear; close all;
 
 loadMat = 0;  % mat-file laden, wenn Ergebnisse mit gleichem D vorhanden
 
-SW = 0.5; %stepwidth
+SW = 0.1; %stepwidth
 unt0 = 0; SW;
 untC = 0; SW;
 ob0 = 9;
@@ -115,7 +115,12 @@ for dIdx = 1: length(DVec)
                 if nu_C2 == nu_02
 
                     % Berechne Real-und Imaginaerteile der Exponenten 
-                    [ImagEigCorrected, ImagEigCorrectedNeg, buffer, Eig] = correctImagValuesEig(eP,buffer,T);
+                    Eig.Real = 1/T * log(abs(eP));
+                    Eig.Imag = 1/T * atan(imag(eP)./real(eP));
+
+                    % Korrigiere Imaginaerteil fuer kontinuierlichen
+                    % Verlauf
+                   [Eig,buffer] = correctImagValues(Eig,buffer);
                  
                     % % Additionsterm n*2*pi/T
                     if cntN <= length(nuCSwitchVec) && ... % Sicherheitscheck, damit n nicht groesser wird als die Anzahl der 'Switchstellen'
@@ -126,7 +131,7 @@ for dIdx = 1: length(DVec)
                     end
 
                     nAdd = n*2*pi/T;
-                    ImagEigSortN = [ImagEigCorrectedNeg, ImagEigCorrected] + [-nAdd,nAdd];
+                    ImagEigSortN = [Eig.ImagCorrectedNeg, Eig.ImagCorrected] + [-nAdd,nAdd];
 
                     CharEx(oidx,:) = [nu_02, nu_C2, Eig.Real', min(Eig.ImagSort), max(Eig.ImagSort), ImagEigSortN, eP'];
                     oidx = oidx + 1;
