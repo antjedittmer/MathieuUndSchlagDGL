@@ -9,14 +9,15 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %% allgemein gueltiger Code zum Plotten aller Faelle
+clc; clear; close all
 
 load("Workspace.mat")
-close all
+
 
 %Diagrammgrenzen
 xachse = MuMin:SW:MuMax;
 
-figure('Position', [100 100 700 700]);
+figure('Position', [100 100 700 700]); nFig = 1;
 s = scatter(damp,freq,100,'linewidth',2);
 m = s.Marker;
 s.Marker = 'x';
@@ -31,38 +32,78 @@ saveas(gcf,[pwd '/Plots/Schwebeflug.png'])
 
 
 % Plotten des Realteils
-figure;
+figure(nFig); nFig = nFig + 1;
+subplot(2,1,1)
 plot(xachse,CharExRe,'LineWidth',1.5,'Color','k');
 set(gca,'ydir', 'reverse');
 xlabel('$\mu$','interpreter','latex','FontSize', 14);
 ylabel('${Re(s_R)}$','interpreter','latex','FontSize', 14);
-saveas(gcf,[pwd '/Plots/Realteile.fig'])
-saveas(gcf,[pwd '/Plots/Realteile.png'])
+% saveas(gcf,[pwd '/Plots/Realteile.fig'])
+% saveas(gcf,[pwd '/Plots/Realteile.png'])
 
 
 % Plotten des Imaginaerteils
-figure('Position', [10 10 600 300]);
+% figure('Position', [10 10 600 300]);
+subplot(2,1,2)
 plot(xachse,CharExIm,'LineWidth',1.5,'Color','k');
+
 ylim('padded')
 xlabel('$\mu$','interpreter','latex','FontSize', 14);
 ylabel('${Im(s_R)}$','interpreter','latex','FontSize', 14);
-saveas(gcf,[pwd '/Plots/Imaginaerteile.fig'])
-saveas(gcf,[pwd '/Plots/Imaginaerteile.png'])
-
+%saveas(gcf,[pwd '/Plots/Imaginaerteile.fig'])
+% saveas(gcf,[pwd '/Plots/Imaginaerteile.png'])
+saveas(gcf,[pwd '/Plots/RealImaginaerteile.png'])
 
 % Plotten der Eigenwerte in der komplexen Ebene
 figure;
 scatter(CharExRe,CharExIm,1);
+
+
+for idx = [1,30:10:50,100:100:700] %length(CharExRe)
+
+    text(CharExRe(idx), CharExIm(idx),num2str(idx));
+end
+
+
 saveas(gcf,[pwd '/Plots/Eigenwerte.fig'])
 saveas(gcf,[pwd '/Plots/Eigenwerte.png'])
+
+if Blatt == 1
+    return;
+end
+
+
+figure;
+scatter(CharExRe(:,1),CharExIm(:,1),'.');
+
+
+% for idx = [1,30:10:50,100:100:700] %length(CharExRe)
+% 
+%     text(CharExRe(idx,1), CharExIm(idx,1),num2str(idx,1));
+% end
+% 
+% figure;
+% scatter(CharExRe(:,2),CharExIm(:,2),'.');
+% 
+% 
+% for idx = [1,30:10:50,100:100:700] %length(CharExRe)
+% 
+%     text(CharExRe(idx), CharExIm(idx),num2str(idx));
+% end
+
+
+
+
+
 
 
 %% 3-Blatt-Rotor Zentrales Schlaggelenk gamma1 = 5,858
 
-load("Workspace.mat")
-close all
+% load("Workspace.mat")
+% close all
 
-figure('Position', [100 100 700 700]);
+figure(nFig); nFig = nFig + 1;
+set(gcf,'Position', [100 100 700 700]);
 s = scatter(damp,freq,100,'linewidth',2);
 m = s.Marker;
 s.Marker = 'x';
@@ -70,7 +111,7 @@ ax = gca;
 ax.XAxisLocation = 'origin';
 ax.YAxisLocation = 'origin';
 set(gca,'XLim',[-2*nu0 2.5*nu0],'YLim',[-2.1*nu0 2.1*nu0])
-viscircles([0 0],nu0,'color','k','linewidth',0.8)
+% viscircles([0 0],nu0,'color','k','linewidth',0.8)
 line([0 0.75],[0 sqrt(nu0^2-0.75^2)])
 xlabel('${Re(s_R)}$','interpreter','latex','FontSize', 14);
 ylabel('${Im(s_R)}$','interpreter','latex','FontSize', 14);
@@ -94,6 +135,10 @@ xlabel('$\mu$','interpreter','latex','FontSize', 14);
 ylabel('${Re(s_R)}$','interpreter','latex','FontSize', 14);
 saveas(gcf,[pwd '/Plots/Realteile.fig'])
 saveas(gcf,[pwd '/Plots/Realteile.png'])
+
+if size(CharExIm,2) <5
+    return;
+end
 
 
 % Plotten des Imaginaerteils

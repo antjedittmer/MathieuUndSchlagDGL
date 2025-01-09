@@ -69,7 +69,6 @@ for dIdx = 1: length(DVec)
 
     %nuCSwitchVec = [0.1,1,1.5^2,2^2,2.5^2] - 0.1;
     nuCSwitchVec = [0.2,1,1.5^2,2^2,2.5^2] - 0.15;
-
     n = 0;
     cntN = 1;
 
@@ -125,12 +124,12 @@ for dIdx = 1: length(DVec)
                     % % Additionsterm n*2*pi/T
                     if cntN <= length(nuCSwitchVec) && ... % Sicherheitscheck, damit n nicht groesser wird als die Anzahl der 'Switchstellen'
                             nu_C2 > nuCSwitchVec(cntN) && ... % n nur bei erreichen der Switchstellen umstellen
-                            abs(Eig.Real(1) - Eig.Real(2))> eps % die Realteile muessen gleich sein
+                            abs(Eig.Real(1) - Eig.Real(2))> eps % die Imaginaerteile muessen gleich sein 
                         n =  n + 0.5;
                         cntN = cntN+1;
                     end
 
-                    nAdd = n*2*pi/T;
+                    nAdd = n*2*pi/T; % 
                     ImagEigSortN = [Eig.ImagCorrectedNeg, Eig.ImagCorrected] + [-nAdd,nAdd];
 
                     CharEx(oidx,:) = [nu_02, nu_C2, Eig.Real', min(Eig.ImagSort), max(Eig.ImagSort), ImagEigSortN, eP'];

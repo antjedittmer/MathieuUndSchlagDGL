@@ -23,7 +23,7 @@ Eig.ImagSort = sort(Eig.Imag);
 tmp = Eig.ImagSort(2);
 tmpNeg = Eig.ImagSort(1);
 
-if buffer.Pos <= tmp || (abs(tmp) < 10^-5) % Wert uebernehmen
+if buffer.Pos < tmp || (abs(tmp) < 10^-5) % Wert uebernehmen
     Eig.ImagCorrected = tmp; % steigender pos. Wert
     Eig.ImagCorrectedNeg = tmpNeg;  % fallender neg. Wert
     buffer.Pos = 0;

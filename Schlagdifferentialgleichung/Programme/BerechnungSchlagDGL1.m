@@ -16,12 +16,12 @@ T = 2*pi;       %Periodendauer
 %(bitte entkommentieren)
 
 %Auswahl=1;Blatt=3; %3-Blatt-Rotor, see-saw
-Auswahl=2;Blatt=3; %3-Blatt-Rotor, voll gelenkig
+% Auswahl=2;Blatt=3; %3-Blatt-Rotor, voll gelenkig
 %Auswahl=3;Blatt=4; %4-Blatt-Rotor, voll gelenkig
 %Auswahl=4;Blatt=5; %5-Blatt-Rotor, voll gelenkig
 %Auswahl=5;Blatt=3; %3-Blatt-Rotor, gelenk-/lagerlos
 %Auswahl=6;Blatt=4; %4-Blatt-Rotor, gelenk-/lagerlos
-%Auswahl=7;Blatt=1; %Einzelblattkoordinaten im rotierenden System
+Auswahl=7; Blatt=1; %Einzelblattkoordinaten im rotierenden System
 
 %Exakte Berechung mittels Floquet oder Naeherung durch konstante
 %Koeffizienten?
