@@ -11,13 +11,62 @@
 %% allgemein gueltiger Code zum Plotten aller Faelle
 clc; clear; close all
 
-load("Workspace.mat")
+load("Workspace.mat","damp","freq","MuMin","SW","MuMax", ...
+    "CharExRe","CharExIm","nu0","Blatt")
+
+xachse = MuMin:SW:MuMax; % Diagrammgrenzen
+nFig = 1; % Nummer erste Figure
+useCorVal = 1; % Ueberschreiben der Realteil
 
 
-%Diagrammgrenzen
-xachse = MuMin:SW:MuMax;
+%% Glaette den Verlauf des Realteils
+CharExRe1 = CharExRe(:,1);
+CharExRe2 = CharExRe(:,2);
 
-figure('Position', [100 100 700 700]); nFig = 1;
+CharExRePos = max(CharExRe1,CharExRe2); % Positiver Eigenwert: Glatter Verlauf
+CharExRe1_NegIdx =  abs(CharExRePos - CharExRe1) > eps; % Index: Negativer Wert 1. Realteil 
+offset = CharExRe1(1); % Offset 
+CharExReNeg =  - (CharExRePos - offset) + offset; % Negativer EW: Gespiegelter positiver EW
+
+CharExRe1Cor = CharExRe1; % Korrigierter 1. Eigenwert
+CharExRe1Cor(CharExRe1_NegIdx) = CharExReNeg(CharExRe1_NegIdx); % Ersetze negative Werte durch gespiegelte positive EW
+
+CharExRe2Cor = CharExRe2; % Korrigierter 1. Eigenwert
+CharExRe2Cor(~CharExRe1_NegIdx) = CharExReNeg(~CharExRe1_NegIdx); % Ersetze negative Werte durch gespiegelte positive EW
+
+if useCorVal == 1
+
+    CharExRe(:,1) = CharExRe1Cor;
+    CharExRe(:,2) = CharExRe2Cor;
+    CharExIm(:,2) = - CharExIm(:,1);
+end
+
+
+%% Plot Real- und Imaginaerteils
+figure(nFig); nFig = nFig + 1;
+
+ax1(1) = subplot(2,1,1);
+plot(xachse,CharExRe,'LineWidth',1.5,'Color','k');
+% set(gca,'ydir', 'reverse');
+grid on;
+xlabel('$\mu$','interpreter','latex','FontSize', 14);
+ylabel('${Re(s_R)}$','interpreter','latex','FontSize', 14);
+
+ax1(2) = subplot(2,1,2);
+plot(xachse,CharExIm,'LineWidth',1.5,'Color','k');
+grid on;
+ylim('padded')
+xlabel('$\mu$','interpreter','latex','FontSize', 14);
+ylabel('${Im(s_R)}$','interpreter','latex','FontSize', 14);
+linkaxes(ax1,'x')
+
+saveas(gcf,[pwd '/Plots/RealImaginaerteile.png'])
+saveas(gcf,[pwd '/Plots/RealImaginaerteile.fig'])
+
+
+%% Plot Zustaende Schwebeflug (damping und frequency)
+figure(nFig); nFig = nFig + 1;
+set(gcf,'Position', [100 100 700 700]); 
 s = scatter(damp,freq,100,'linewidth',2);
 m = s.Marker;
 s.Marker = 'x';
@@ -31,39 +80,13 @@ saveas(gcf,[pwd '/Plots/Schwebeflug.fig'])
 saveas(gcf,[pwd '/Plots/Schwebeflug.png'])
 
 
-% Plotten des Realteils
-figure(nFig); nFig = nFig + 1;
-subplot(2,1,1)
-plot(xachse,CharExRe,'LineWidth',1.5,'Color','k');
-set(gca,'ydir', 'reverse');
-xlabel('$\mu$','interpreter','latex','FontSize', 14);
-ylabel('${Re(s_R)}$','interpreter','latex','FontSize', 14);
-% saveas(gcf,[pwd '/Plots/Realteile.fig'])
-% saveas(gcf,[pwd '/Plots/Realteile.png'])
-
-
-% Plotten des Imaginaerteils
-% figure('Position', [10 10 600 300]);
-subplot(2,1,2)
-plot(xachse,CharExIm,'LineWidth',1.5,'Color','k');
-
-ylim('padded')
-xlabel('$\mu$','interpreter','latex','FontSize', 14);
-ylabel('${Im(s_R)}$','interpreter','latex','FontSize', 14);
-%saveas(gcf,[pwd '/Plots/Imaginaerteile.fig'])
-% saveas(gcf,[pwd '/Plots/Imaginaerteile.png'])
-saveas(gcf,[pwd '/Plots/RealImaginaerteile.png'])
-
-% Plotten der Eigenwerte in der komplexen Ebene
+%% Plotten der Eigenwerte in der komplexen Ebene
 figure;
 scatter(CharExRe,CharExIm,1);
 
-
-for idx = [1,30:10:50,100:100:700] %length(CharExRe)
-
-    text(CharExRe(idx), CharExIm(idx),num2str(idx));
-end
-
+% for idx = [1,30:10:50,100:100:700] %length(CharExRe)
+%     text(CharExRe(idx), CharExIm(idx),num2str(idx));
+% end
 
 saveas(gcf,[pwd '/Plots/Eigenwerte.fig'])
 saveas(gcf,[pwd '/Plots/Eigenwerte.png'])
@@ -90,11 +113,6 @@ scatter(CharExRe(:,1),CharExIm(:,1),'.');
 % 
 %     text(CharExRe(idx), CharExIm(idx),num2str(idx));
 % end
-
-
-
-
-
 
 
 %% 3-Blatt-Rotor Zentrales Schlaggelenk gamma1 = 5,858
