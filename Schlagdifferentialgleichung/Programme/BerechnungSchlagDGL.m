@@ -4,7 +4,7 @@ clc ; clear variables ; close all;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Initialisierung und Hilfsvariablen
 
-% true = 1;         % fuer Detektion von mu-Wert bei Trennung der Realtele
+% true = 1;         % fuer Detektion von mu_param-Wert bei Trennung der Realtele
 SW = 0.01;        % Schrittweite der Berechnung, Genauigkeit
 idx = 1;            % Zaehlvariable
 t0 = 0.0;         % Anfangszeitpunkt t0
@@ -58,7 +58,7 @@ nu0 = Par(20,Auswahl);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-%Grenzen fuer mu
+%Grenzen fuer mu_param
 MuMin = 0;
 MuMax = 10;
 
@@ -73,7 +73,7 @@ CharExIm = zeros(nMu,AnzGl);
 CharEx = zeros(nMu,AnzGl*5);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% Einlesen der A-Matrix mit mu=0 fuer die exakte Loesung im Schwebeflug
+%% Einlesen der A-Matrix mit mu_param=0 fuer die exakte Loesung im Schwebeflug
 
 [~,A] = SchlagDGL(0,0,gamma,d2,d3,d4,0,ebeta,nu0,Blatt);
 
@@ -96,37 +96,64 @@ end
 
 
 %Optionen fuer die Genauigkeit und Toleranz fuer den ODE-Solver
-options = odeset('RelTol',1e-10,'AbsTol',1e-12);
+options1 = odeset('RelTol',1e-10,'AbsTol',1e-12);
+options2 = odeset('RelTol',1e-10,'AbsTol',1e-12,'MaxStep', 1e-3);
+options3 = odeset('RelTol', 1e-10, 'AbsTol', 1e-12, ...
+    'Jacobian', @(psi, x) myJacobian(psi, x, gamma, mu_param, d2, d3, ebeta));
+
+% Define options with the Jacobian
+options = odeset('RelTol', 1e-10, 'AbsTol', 1e-12, ...
+    'Jacobian', @(psi, x) myJacobian(psi, x, gamma, mu_param, d2, d3, ebeta));
+
+% % Call the ODE solver
+% sol = ode15s(@(psi, x) SchlagDGL(psi,x,gamma,d2,d3,d4,mu_param,ebeta,nu0,Blatt), ...
+%              [t0, T], Diagonal(:,k), options);
+
 
 buffer.Pos = 0;
 cntN = 1;
 
-nuCSwitchVec = [4.4,5.5,8,9] - 0.15;
+nuCSwitchVec = [4.4,5.5,8,9,11] - 0.15;
+nuCSwitchValVec = [1.5,2.5,4.5,5,5];
 n = 1;
 
-for mu = MuMin:SW:MuMax
-    
+mu_paramVec = MuMin:SW:MuMax;
+
+for mu_param = MuMin:SW:MuMax
+
+    % if mu_param >=0
+    %     options = options3;
+    % else
+    %     options = options3;
+    % end
+
     if konstant == 1
         for k=1:AnzGl
-            sol = ode45(@(psi,x)SchlagDGLkonstant(psi,x,gamma,d2,d3,d4,mu,ebeta,nu0,Blatt),[t0,T],Diagonal(:,k),options);
+            sol = ode45(@(psi,x)SchlagDGLkonstant(psi,x,gamma,d2,d3,d4,mu_param,ebeta,nu0,Blatt),[t0,T],Diagonal(:,k),options);
             MonoVek = deval(sol,T);
             Monodromie(:,k) = MonoVek;
         end
     elseif konstant == 0
+        options = odeset('RelTol', 1e-10, 'AbsTol', 1e-12, 'MaxStep', 1e-3,...
+    'Jacobian', @(psi, x) myJacobian(psi, x, gamma, mu_param, d2, d3, ebeta));
+
         for k=1:AnzGl
-            sol = ode45(@(psi,x)SchlagDGL(psi,x,gamma,d2,d3,d4,mu,ebeta,nu0,Blatt),[t0,T],Diagonal(:,k),options);
+            sol = ode45(@(psi, x) SchlagDGL(psi, x, gamma, d2, d3, d4, mu_param, ebeta, nu0, Blatt), ...
+                [t0, T], Diagonal(:,k), options2);
             MonoVek = deval(sol,T);
             Monodromie(:,k) = MonoVek;
         end
+
+        cond_A(idx) = cond(Monodromie,2);
     end
 
     % charakteristische Multiplikatoren (Eigenwerte der Monodromiematrix)
     eP = (eig(Monodromie))';
     [ePSort, Idxsort] = sort(eP);
-    CharMult(idx,:) = [ePSort,mu];
+    CharMult(idx,:) = [ePSort,mu_param];
 
     %charakteristische Exponenten
-    if mu == 0
+    if mu_param == 0
         Im0 = 1/T * angle(eP(sortIdx));
     end
 
@@ -140,9 +167,9 @@ for mu = MuMin:SW:MuMax
 
     % % Additionsterm n*2*pi/T
     if cntN <= length(nuCSwitchVec) && ... % Sicherheitscheck, damit n nicht groesser wird als die Anzahl der 'Switchstellen'
-            mu > nuCSwitchVec(cntN) && ... % n nur bei erreichen der Switchstellen umstellen
+            mu_param > nuCSwitchVec(cntN) && ... % n nur bei erreichen der Switchstellen umstellen
             abs(Eig.Imag(1) - Eig.Imag(2)) < eps && ...% die Imaginaerteile muessen gleich sein
-            abs(Eig.Real(1) - Eig.Real(2)) < 1.5
+            abs(Eig.Real(1) - Eig.Real(2)) < nuCSwitchValVec(cntN) % die Realteile 'kreuzen' sich
         n =  n + 0.5;
         cntN = cntN+1;
     end
@@ -175,11 +202,11 @@ tableCharEx = array2table(CharEx,"VariableNames",VarNames);
 figure; plot(MuMin:SW:MuMax,CharExIm(:,1), MuMin:SW:MuMax,CharExIm(:,2));
 hold on; plot(MuMin:SW:MuMax,CharExRe(:,1), MuMin:SW:MuMax, CharExRe(:,2));
 
-figure;
-plot(real(CharMult(:,1)),imag(CharMult(:,1)),'kx')
-hold on;
-plot(real(CharMult(:,2)),imag(CharMult(:,2)),'bx')
-
+% figure;
+% plot(real(CharMult(:,1)),imag(CharMult(:,1)),'kx')
+% hold on;
+% plot(real(CharMult(:,2)),imag(CharMult(:,2)),'bx')
+% 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Korrektur der Ergebnisse
@@ -191,17 +218,17 @@ plot(real(CharMult(:,2)),imag(CharMult(:,2)),'bx')
 % end
 
 
-%nur entkommentieren, wenn im gewählten Bereich für große mu Probleme
+%nur entkommentieren, wenn im gewählten Bereich für große mu_param Probleme
 %auftreten: Schleife spiegelt oberen Ast der Realteile auf den unterern
 %(Annahme der Symmetrie) und ersetzt fehlerhafte Imaginärteile durch
-%Im(s_R(mu)) an der Stelle des gewählten mu
+%Im(s_R(mu_param)) an der Stelle des gewählten mu_param
 
 %{
 
 %nu anpassen ab
-mu = 1.2;
+mu_param = 1.2;
 format shortG
-nutemp = round(mu/SW);
+nutemp = round(mu_param/SW);
 
 temp = CharExRe(1,1);
 CharExRe=CharExRe-temp;
