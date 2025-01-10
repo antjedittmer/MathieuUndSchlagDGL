@@ -18,6 +18,11 @@ xachse = MuMin:SW:MuMax; % Diagrammgrenzen
 nFig = 1; % Nummer erste Figure
 useCorVal = 1; % Ueberschreiben der Realteil
 
+plotDir = 'Plots';
+if~isfolder(plotDir)
+    mkdir(plotDir);
+end
+
 
 %% Glaette den Verlauf des Realteils
 CharExRe1 = CharExRe(:,1);
