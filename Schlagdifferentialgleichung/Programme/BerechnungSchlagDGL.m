@@ -5,7 +5,7 @@ clc ; clear variables ; close all;
 %% Initialisierung und Hilfsvariablen
 
 % true = 1;         % fuer Detektion von mu_param-Wert bei Trennung der Realtele
-SW = 0.01;        % Schrittweite der Berechnung, Genauigkeit
+SW = 0.01; %0.01;        % Schrittweite der Berechnung, Genauigkeit
 idx = 1;            % Zaehlvariable
 t0 = 0.0;         % Anfangszeitpunkt t0
 T = 2*pi;         % Periodendauer
@@ -14,13 +14,13 @@ T = 2*pi;         % Periodendauer
 %% Auswahl, welcher Rotor berechnet werden soll
 %(bitte entkommentieren)
 
-%Auswahl=1;Blatt=3; %3-Blatt-Rotor, see-saw
+Auswahl=1;Blatt=3; %3-Blatt-Rotor, see-saw
 %Auswahl=2;Blatt=3; %3-Blatt-Rotor, voll gelenkig
 %Auswahl=3;Blatt=4; %4-Blatt-Rotor, voll gelenkig
 %Auswahl=4;Blatt=5; %5-Blatt-Rotor, voll gelenkig
 %Auswahl=5;Blatt=3; %3-Blatt-Rotor, gelenk-/lagerlos
 %Auswahl=6;Blatt=4; %4-Blatt-Rotor, gelenk-/lagerlos
-Auswahl = 7; Blatt=1; %Einzelblattkoordinaten im rotierenden System
+%Auswahl = 7; Blatt=1; %Einzelblattkoordinaten im rotierenden System
 
 if exist('Auswahl','var') ~= 1
     Auswahl = 100;    % fuer Fehlermeldung, wenn keine Auswahl getroffen wurde
@@ -70,7 +70,7 @@ Monodromie = zeros(AnzGl);
 CharMult = zeros(nMu,AnzGl+1);
 CharExRe = zeros(nMu,AnzGl);
 CharExIm = zeros(nMu,AnzGl);
-CharEx = zeros(nMu,AnzGl*5 + 2);
+CharEx = zeros(nMu,AnzGl*6);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Einlesen der A-Matrix mit mu_param=0 fuer die exakte Loesung im Schwebeflug
@@ -102,7 +102,7 @@ options3 = odeset('RelTol', 1e-10, 'AbsTol', 1e-12, ...
     'Jacobian', @(psi, x) myJacobian(psi, x, gamma, mu_param, d2, d3, ebeta));
 
 % 'Switch'-Stellen des Imaginaerteil
-buffer.Pos = 0;
+buffer.Pos = zeros(Blatt,1);
 bufferDiffReNeg0 = 0; % 
 cntN = 1;
 
@@ -112,6 +112,7 @@ n = 1;
 
 mu_paramVec = MuMin:SW:MuMax;
 cond_A = nan(length(mu_paramVec),1); 
+b1 = Blatt + 1;
 
 for mu_param = mu_paramVec
 
@@ -149,14 +150,29 @@ for mu_param = mu_paramVec
 
     % Korrigiere Imaginaerteil fuer kontinuierlichen
     % Verlauf
-    [Eig,buffer] = correctImagValues(Eig,buffer);
+    % [Eig,buffer] = correctImagValues(Eig,buffer);
+
+   for idxC = 1: length(Eig.Real)/2
+        idxVec = 2*idxC-1 : 2*idxC;
+        EigTemp.Real = Eig.Real(idxVec);
+        EigTemp.Imag = Eig.Imag(idxVec);
+        bufferTemp.Pos = buffer.Pos(idxC);
+
+        [EigTemp,bufferTemp] = correctImagValues(EigTemp,bufferTemp);
+        Eig.Real(idxVec) = EigTemp.Real;
+        Eig.Imag(idxVec) = EigTemp.Imag;
+        Eig.ImagSort(idxVec) = EigTemp.ImagSort;
+        Eig.ImagCorrected(idxC) = EigTemp.ImagCorrected;
+        Eig.ImagCorrectedNeg(idxC) = EigTemp.ImagCorrectedNeg;
+        buffer.Pos(idxC) = bufferTemp.Pos;
+    end
 
     % % Additionsterm n*2*pi/T
 
-    diffReNeg0 = (Eig.Real(2) - Eig.Real(1)) >= 0 & abs(Eig.Real(2) - Eig.Real(1)) > 0.1;
+    diffReNeg0 = (Eig.Real(b1) - Eig.Real(1)) >= 0 & abs(Eig.Real(b1) - Eig.Real(1)) > 0.1;
     if cntN <= length(nuCSwitchVec) && ... % Sicherheitscheck, damit n nicht groesser wird als die Anzahl der 'Switchstellen'
             mu_param > nuCSwitchVec(cntN) && ... % n nur bei erreichen der Switchstellen umstellen
-            abs(Eig.Imag(1) - Eig.Imag(2)) < eps && ...% die Imaginaerteile muessen gleich sein
+            abs(Eig.Imag(1) - Eig.Imag(b1)) < eps && ...% die Imaginaerteile muessen gleich sein
             diffReNeg0 ~= bufferDiffReNeg0 % die Realteile 'kreuzen' sich
             % abs(Eig.Real(1) - Eig.Real(2)) < nuCSwitchValVec(cntN) % die Realteile 'kreuzen' sich
         n =  n + 0.5;
@@ -165,12 +181,13 @@ for mu_param = mu_paramVec
     bufferDiffReNeg0 = diffReNeg0;
 
     nAdd = n*2*pi/T;
-    ImagEigSortN = [Eig.ImagCorrectedNeg, Eig.ImagCorrected] + [-nAdd, nAdd];
-    CharEx(idx,:) = [Eig.Real,  Eig.Imag, min(Eig.ImagSort), max(Eig.ImagSort), ImagEigSortN, ...
-        real(ePSort(1)), imag(ePSort(1)), real(ePSort(2)), imag(ePSort(2))];
+    nAddVec =  [-nAdd*ones(1,Blatt), nAdd*ones(1,Blatt)];
+    ImagEigSortN = [Eig.ImagCorrectedNeg, Eig.ImagCorrected] + nAddVec;
+    CharEx(idx,:) = [Eig.Real, Eig.Imag, Eig.ImagSort, ImagEigSortN, ...
+        real(ePSort), imag(ePSort)];
 
     Re = Eig.Real;
-    Im = sort(Eig.Imag) + [-nAdd, nAdd]; %ImagEigSortN; % sort(angle(eP(sortIdx)),'descend');
+    Im = sort(Eig.Imag) +  nAddVec; %ImagEigSortN; % sort(angle(eP(sortIdx)),'descend');
 
     CharExRe(idx,:) = Re;
     CharExIm(idx,:) = Im;
@@ -179,9 +196,21 @@ for mu_param = mu_paramVec
 end
 
 %% Table fuer Excel Export
+lEig = length(Eig.Real); 
+cellRealCharacteristicExponent = regexp(sprintf('RealCharExp%02d,', 1: length(Eig.Real)),',','split');
+cellImagCharacteristicExponent = regexp(sprintf('ImagCharExp%02d,', 1: length(Eig.Imag)),',','split');
+cellImagSorted = regexp(sprintf('ImagSort%02d,', 1: lEig),',','split');
+cellImagSortedN = regexp(sprintf('ImagSortN%02d,', 1: lEig),',','split');
+cellRealCharacteristicMultiplier = regexp(sprintf('RealCharMult%02d,', 1: lEig),',','split');
+cellImagCharacteristicMultiplier = regexp(sprintf('ImagCharMult%02d,', 1: lEig),',','split');
 
-VarNames = {'muChar','RealCharExp1','RealCharExp2','ImagCharExp1','ImagCharExp2','minImagSort','maxImagSort',...
-    'ImagSortN1','ImagSortN2','RealCharMult1','ImagCharMult1','RealCharMult2', 'ImagCharMult2'};
+% VarNames = {'muChar','RealCharExp1','RealCharExp2','ImagCharExp1','ImagCharExp2','minImagSort','maxImagSort',...
+%     'ImagSortN1','ImagSortN2','RealCharMult1','ImagCharMult1','RealCharMult2', 'ImagCharMult2'};
+VarNames = ['muChar',cellRealCharacteristicExponent(1:lEig),...
+    cellImagCharacteristicExponent(1:lEig),...
+    cellImagSorted(1:lEig), cellImagSortedN(1:lEig),...
+    cellRealCharacteristicMultiplier(1:lEig),...
+    cellImagCharacteristicMultiplier(1:lEig)];
 
 % Table mit allen Variablen (acuh sortierte Imaginaerwerte, die nur zum
 % Debuggen benutzt werden
@@ -220,7 +249,8 @@ end
 
 ebetaStr = strrep(sprintf('_ebeta%2.3f', ebeta),'.','dot');
 muStr = sprintf('_mu%d_mu%d',round(MuMin), round(MuMax));
-filename = ['Workspace', ebetaStr, muStr,'.mat'];
+auswahlStr = sprintf('_Auswahl%d',Auswahl);
+filename = ['Workspace', ebetaStr, muStr,auswahlStr,'.mat'];
 
 excelfilename = strrep(filename,'.mat','.xlsx');
 excelfilename = strrep(excelfilename,'Workspace','CharactExponentenMultiplikatoren');
@@ -235,27 +265,8 @@ excelfilename1 = fullfile(excelDir,excelfilename);
 writetable(tableCharPrint,excelfilename1);
 
 %% Code von Matthieuscher DGL
-% %[nu_02, nu_C2, Eig.Real', min(ImagEigSort), max(ImagEigSort), ImagEigSortN, eP'];
-% CharExTable = array2table(CharEx(:,[1:4,7,8]),'VariableNames',...
-%     {'nu02','nu_C2','Eig.Real1','Eig.Real2', 'ImagEig1', 'ImagEig2'});
-% 
-% CharExTable.RealCharExp1 = real(CharEx(:,9));
-% CharExTable.ImagCharExp1 = imag(CharEx(:,9));
-% CharExTable.RealCharExp2 = real(CharEx(:,10));
-% CharExTable.ImagCharExp2 = imag(CharEx(:,10));
-% 
-% % CharAllTable = array2table(CharEx(:,[1:4,7,8,9,10]),'VariableNames',...
-% %    {'nu02','nu_C2','Eig.Real1','Eig.Real2', 'ImagEig1', 'ImagEig2','CharExp1','CharExp2'});
-% 
-% 
-% excelfilename = strrep(fileName,'.mat','CharExAll.xlsx');
-% excelfilename1 = strrep(excelfilename,dDir,excelDir);
-% 
-% writetable(CharExTable,excelfilename1)
-
-
-figure; plot(MuMin:SW:MuMax,CharExIm(:,1), MuMin:SW:MuMax,CharExIm(:,2));
-hold on; plot(MuMin:SW:MuMax,CharExRe(:,1), MuMin:SW:MuMax, CharExRe(:,2));
+figure; plot(MuMin:SW:MuMax,CharExIm,'*-');
+hold on; plot(MuMin:SW:MuMax,CharExRe,'*-');
 
 % figure;
 % plot(real(CharMult(:,1)),imag(CharMult(:,1)),'kx')
