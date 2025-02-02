@@ -11,7 +11,7 @@
 %% allgemein gueltiger Code zum Plotten aller Faelle
 clc; clear; close all
 
-load("Workspace.mat","damp","freq","MuMin","SW","MuMax", ...
+load("Workspace_ebeta0dot153_mu0_mu10.mat","damp","freq","MuMin","SW","MuMax", ...
     "CharExRe","CharExIm","nu0","Blatt")
 
 xachse = MuMin:SW:MuMax; % Diagrammgrenzen

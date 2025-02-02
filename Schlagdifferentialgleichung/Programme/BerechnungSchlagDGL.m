@@ -5,7 +5,7 @@ clc ; clear variables ; close all;
 %% Initialisierung und Hilfsvariablen
 
 % true = 1;         % fuer Detektion von mu_param-Wert bei Trennung der Realtele
-SW = 0.01; %0.01;        % Schrittweite der Berechnung, Genauigkeit
+SW = 0.1; %0.01;        % Schrittweite der Berechnung, Genauigkeit
 idx = 1;            % Zaehlvariable
 t0 = 0.0;         % Anfangszeitpunkt t0
 T = 2*pi;         % Periodendauer
@@ -265,8 +265,13 @@ excelfilename1 = fullfile(excelDir,excelfilename);
 writetable(tableCharPrint,excelfilename1);
 
 %% Code von Matthieuscher DGL
-figure; plot(MuMin:SW:MuMax,CharExIm,'*-');
-hold on; plot(MuMin:SW:MuMax,CharExRe,'*-');
+figure;
+
+%subplot(2,1,1);
+plot(MuMin:SW:MuMax,CharExRe(:,1),'*-', MuMin:SW:MuMax,CharExRe(:,Blatt +1),'o-');
+hold on;
+plot(MuMin:SW:MuMax,CharExIm(:,1),'*-',MuMin:SW:MuMax,CharExIm(:,Blatt +1),'o-');
+
 
 % figure;
 % plot(real(CharMult(:,1)),imag(CharMult(:,1)),'kx')
