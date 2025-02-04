@@ -5,7 +5,7 @@ clc ; clear variables ; close all;
 %% Initialisierung und Hilfsvariablen
 
 % true = 1;         % fuer Detektion von mu_param-Wert bei Trennung der Realtele
-SW = 0.1; %0.01;        % Schrittweite der Berechnung, Genauigkeit
+SW = 0.1;        % Schrittweite der Berechnung, Genauigkeit
 idx = 1;            % Zaehlvariable
 t0 = 0.0;         % Anfangszeitpunkt t0
 T = 2*pi;         % Periodendauer
@@ -20,7 +20,7 @@ Auswahl=1;Blatt=3; %3-Blatt-Rotor, see-saw
 %Auswahl=4;Blatt=5; %5-Blatt-Rotor, voll gelenkig
 %Auswahl=5;Blatt=3; %3-Blatt-Rotor, gelenk-/lagerlos
 %Auswahl=6;Blatt=4; %4-Blatt-Rotor, gelenk-/lagerlos
-%Auswahl = 7; Blatt=1; %Einzelblattkoordinaten im rotierenden System
+%Auswahl = 7; Blatt = 1; %Einzelblattkoordinaten im rotierenden System
 
 if exist('Auswahl','var') ~= 1
     Auswahl = 100;    % fuer Fehlermeldung, wenn keine Auswahl getroffen wurde
@@ -103,16 +103,16 @@ options3 = odeset('RelTol', 1e-10, 'AbsTol', 1e-12, ...
 
 % 'Switch'-Stellen des Imaginaerteil
 buffer.Pos = zeros(Blatt,1);
-bufferDiffReNeg0 = 0; % 
+bufferDiffReNeg0 = 0; %
 cntN = 1;
 
-nuCSwitchVec = [4.4,5.5,8,9,11] - 0.15;
-nuCSwitchValVec = [1.5,2.5,4.5,5,5];
+nuCSwitchVec = [4.4,5.7,8,9,11] - 0.15;
+%nuCSwitchValVec = [1.5,2.5,4.5,5,5];
 n = 1;
 
 mu_paramVec = MuMin:SW:MuMax;
-cond_A = nan(length(mu_paramVec),1); 
-b1 = Blatt + 1;
+cond_A = nan(length(mu_paramVec),1);
+b1 = AnzGl; %Blatt + 1;
 
 for mu_param = mu_paramVec
 
@@ -135,24 +135,51 @@ for mu_param = mu_paramVec
     end
 
     % charakteristische Multiplikatoren (Eigenwerte der Monodromiematrix)
-    eP = (eig(Monodromie))';
-    ePSort = sort(eP); 
-    CharMult(idx,:) = [ePSort,mu_param];
+    charMult = (eig(Monodromie))';
+    [~,idxSort] = sort(real(charMult));
+    charMultSort1 = charMult(idxSort);
+    %charMultSort1 = sort(charMult);
+
+    Re = real(charMult);
+    absMult1Greater = 0; %abs(real(charMultSort1(1))) - abs(real(charMultSort1(b1)))> 0.1;
+
+    if idx == 1
+        % bei erstem Eigenwert-Schritt noch keine Sortierung
+        eigenvalues_sorted(:, idx) = Re;
+        charMultSort2 = Re;
+    else
+        % Sortiere Eigenwerte im Vergleich zum vorherigen Schritt
+        prev_eigenvalues = eigenvalues_sorted(:, idx-1);
+        vecIdx = nan(AnzGl,1);
+        for i = 1:AnzGl
+            % nächstgelegener Eigenwert
+            [min_val, min_idx] = min(abs(Re - prev_eigenvalues(i)));
+            eigenvalues_sorted(i, idx) = Re(min_idx);
+            Re(min_idx) = NaN; % Wert auf NaN setzen gegen doppelte Zuordnung
+            vecIdx(i) = min_idx;
+        end
+        charMultSort2 = Re(vecIdx);
+    end
+    charMultSort = charMultSort2;
+    prevAbsMult1Greater = absMult1Greater;
+
+    CharMult(idx,:) = [charMultSort,mu_param];
 
     % charakteristische Exponenten
     if mu_param == 0
-        Im0 = 1/T * angle(eP(sortIdx));
+        Im0 = 1/T * angle(charMultSort);
     end
 
     % Berechne Real-und Imaginaerteile der Exponenten
-    Eig.Real = 1/T * log(abs(ePSort));
-    Eig.Imag = 1/T * atan(imag(ePSort)./real(ePSort));
+    Eig.Real1 = 1/T * log(abs(charMultSort1));
+    Eig.Real = 1/T * log(abs(charMultSort));
+    Eig.Imag = 1/T * atan(imag(charMultSort)./real(charMultSort));
 
     % Korrigiere Imaginaerteil fuer kontinuierlichen
     % Verlauf
     % [Eig,buffer] = correctImagValues(Eig,buffer);
 
-   for idxC = 1: length(Eig.Real)/2
+    for idxC = 1: length(Eig.Real)/2
         idxVec = 2*idxC-1 : 2*idxC;
         EigTemp.Real = Eig.Real(idxVec);
         EigTemp.Imag = Eig.Imag(idxVec);
@@ -169,22 +196,32 @@ for mu_param = mu_paramVec
 
     % % Additionsterm n*2*pi/T
 
-    diffReNeg0 = (Eig.Real(b1) - Eig.Real(1)) >= 0 & abs(Eig.Real(b1) - Eig.Real(1)) > 0.1;
-    if cntN <= length(nuCSwitchVec) && ... % Sicherheitscheck, damit n nicht groesser wird als die Anzahl der 'Switchstellen'
-            mu_param > nuCSwitchVec(cntN) && ... % n nur bei erreichen der Switchstellen umstellen
-            abs(Eig.Imag(1) - Eig.Imag(b1)) < eps && ...% die Imaginaerteile muessen gleich sein
-            diffReNeg0 ~= bufferDiffReNeg0 % die Realteile 'kreuzen' sich
-            % abs(Eig.Real(1) - Eig.Real(2)) < nuCSwitchValVec(cntN) % die Realteile 'kreuzen' sich
+    % diffReNeg0 = (Eig.Real1(b1) - Eig.Real1(1)) >= 0 & abs(Eig.Real1(b1) - Eig.Real1(1)) > 0.1;
+    % absMult1Greater = abs(real(charMultSort1(1))) - abs(real(charMultSort1(b1)))> 0.1;
+    % if cntN <= length(nuCSwitchVec) && ... % Sicherheitscheck, damit n nicht groesser wird als die Anzahl der 'Switchstellen'
+    %         mu_param > nuCSwitchVec(cntN) && ... % n nur bei erreichen der Switchstellen umstellen
+    %         abs(Eig.Imag(1) - Eig.Imag(b1)) < eps && ...% die Imaginaerteile muessen gleich sein
+    %         absMult1Greater ~= prevAbsMult1Greater
+    %         % diffReNeg0 ~= bufferDiffReNeg0 % die Realteile 'kreuzen' sich
+    %         % abs(Eig.Real(1) - Eig.Real(2)) < nuCSwitchValVec(cntN) % die Realteile 'kreuzen' sich
+    %     n =  n + 0.5;
+    %     cntN = cntN+1;
+    % end
+
+    absDiffCharMult = abs(CharMult(idx,1)) > abs(CharMult(idx,b1));
+    if idx >1 && abs(prevAbsDiffCharMult - absDiffCharMult) > 0.1
         n =  n + 0.5;
         cntN = cntN+1;
     end
-    bufferDiffReNeg0 = diffReNeg0;
+    prevAbsDiffCharMult = absDiffCharMult;
+
+    %bufferDiffReNeg0 = diffReNeg0;
 
     nAdd = n*2*pi/T;
     nAddVec =  [-nAdd*ones(1,Blatt), nAdd*ones(1,Blatt)];
     ImagEigSortN = [Eig.ImagCorrectedNeg, Eig.ImagCorrected] + nAddVec;
     CharEx(idx,:) = [Eig.Real, Eig.Imag, Eig.ImagSort, ImagEigSortN, ...
-        real(ePSort), imag(ePSort)];
+        real(charMultSort), imag(charMultSort)];
 
     Re = Eig.Real;
     Im = sort(Eig.Imag) +  nAddVec; %ImagEigSortN; % sort(angle(eP(sortIdx)),'descend');
@@ -196,7 +233,7 @@ for mu_param = mu_paramVec
 end
 
 %% Table fuer Excel Export
-lEig = length(Eig.Real); 
+lEig = length(Eig.Real);
 cellRealCharacteristicExponent = regexp(sprintf('RealCharExp%02d,', 1: length(Eig.Real)),',','split');
 cellImagCharacteristicExponent = regexp(sprintf('ImagCharExp%02d,', 1: length(Eig.Imag)),',','split');
 cellImagSorted = regexp(sprintf('ImagSort%02d,', 1: lEig),',','split');
@@ -221,13 +258,13 @@ tableCharEx = array2table([CharMult(:,end),CharEx],"VariableNames",VarNames);
 PrintNames = VarNames(contains(VarNames,'Char')); % Variablennamen
 tableCharPrint = tableCharEx(:,PrintNames ); % Auswahl der Tablespalten
 
-% 'Geglaettete' Realanteile 
+% 'Geglaettete' Realanteile
 CharExRe1 = CharExRe(:,1);
-CharExRe2 = CharExRe(:,2);
+CharExRe2 = CharExRe(:,Blatt + 1);
 
 CharExRePos = max(CharExRe1,CharExRe2); % Positiver Eigenwert: Glatter Verlauf
-CharExRe1_NegIdx =  abs(CharExRePos - CharExRe1) > eps; % Index: Negativer Wert 1. Realteil 
-offset = CharExRe1(1); % Offset 
+CharExRe1_NegIdx =  abs(CharExRePos - CharExRe1) > eps; % Index: Negativer Wert 1. Realteil
+offset = CharExRe1(1); % Offset
 CharExReNeg =  - (CharExRePos - offset) + offset; % Negativer EW: Gespiegelter positiver EW
 
 CharExRe1Cor = CharExRe1; % Korrigierter 1. Eigenwert
@@ -236,11 +273,10 @@ CharExRe1Cor(CharExRe1_NegIdx) = CharExReNeg(CharExRe1_NegIdx); % Ersetze negati
 CharExRe2Cor = CharExRe2; % Korrigierter 1. Eigenwert
 CharExRe2Cor(~CharExRe1_NegIdx) = CharExReNeg(~CharExRe1_NegIdx); % Ersetze negative Werte durch gespiegelte positive EW
 
-
 tableCharPrint.RealCharExp1Corrected = CharExRe1Cor;
-tableCharPrint.ImagCharExp1Corrected = CharExIm(:,1); % Erster Wert 
+tableCharPrint.ImagCharExp1Corrected = CharExIm(:,1); % Erster Wert
 tableCharPrint.RealCharExp2Corrected = CharExRe2Cor;
-tableCharPrint.ImagCharExp2Corrected = - CharExIm(:,1);
+tableCharPrint.ImagCharExp2Corrected = -CharExIm(:,1);
 
 excelDir = 'excelDir';
 if ~isfolder(excelDir)
@@ -265,19 +301,80 @@ excelfilename1 = fullfile(excelDir,excelfilename);
 writetable(tableCharPrint,excelfilename1);
 
 %% Code von Matthieuscher DGL
-figure;
+figure(1);
+ax1(1) = subplot(2,1,1);
+plot(MuMin:SW:MuMax,CharExRe(:,1),'*-', MuMin:SW:MuMax,CharExRe(:,b1),'o-',...
+    MuMin:SW:MuMax,CharExIm(:,1),'*-',MuMin:SW:MuMax,CharExIm(:,b1),'o-');
+legend('Re(Exp1)', sprintf('Re(Exp%d)',b1),'Im(Exp1)',sprintf('Im(Exp%d)',b1),...
+    'Location','SouthWest'); grid on;
+ax1(2) = subplot(2,1,2);
+plot(MuMin:SW:MuMax,CharExRe1Cor,'*-', MuMin:SW:MuMax,CharExRe2Cor,'o-',...
+    MuMin:SW:MuMax,CharExIm(:,1),'*-',MuMin:SW:MuMax,-CharExIm(:,1),'o-');
+grid on;
+linkaxes(ax1,'x')
 
-%subplot(2,1,1);
-plot(MuMin:SW:MuMax,CharExRe(:,1),'*-', MuMin:SW:MuMax,CharExRe(:,Blatt +1),'o-');
-hold on;
-plot(MuMin:SW:MuMax,CharExIm(:,1),'*-',MuMin:SW:MuMax,CharExIm(:,Blatt +1),'o-');
+% evSort = real(CharMult(:,1:2))';
+% figure;
+% subplot(2,1,1);
+% plot(mu_paramVec,eigenvalues_sorted(1,:), mu_paramVec,evSort(1,:),'k--');
+% subplot(2,1,1);
+% CharMult
+
+figure(3);
+plot(MuMin:SW:(MuMax-SW),abs(diff(CharExRe1Cor)),'-*')
+legend('abs(diff(CharExRe1Cor))')
+
+%% Berechnung absoluter Wert charakteristische Multiplikatoren
+absCharMult1 = abs(CharMult(:,1));
+absCharMultb1 = abs(CharMult(:,b1));
+diffAbsCharMult = abs(absCharMult1) > abs(absCharMultb1);
+
+checkCharMult1Greater = sum(absCharMult1 <= absCharMultb1) == length(absCharMult1);
+
+vecAbsDiffRealCharMult = abs(diff(abs(absCharMult1) - abs(absCharMultb1)> 0));
+
+figure(4);
+pos0 = get(0,'defaultFigurePosition');
+set(gcf, "Position",[pos0(1:3),1.5*pos0(4)])
+ax1(1) = subplot(3,1,1);
+plot(mu_paramVec,absCharMult1, mu_paramVec,absCharMultb1);
+legend('Betrag char. Mult. 1',sprintf('Betrag char. Mult. %d',b1),'Location','SouthWest');
+ylabel('linear')
+axis tight; grid on;
+
+ax1(2) = subplot(3,1,2);
+semilogy(mu_paramVec,absCharMult1, mu_paramVec,absCharMultb1);
+legend('Betrag char. Mult. 1',sprintf('Betrag char. Mult. %d',b1),'Location','SouthWest');
+ylabel('semilogy')
+axis tight; grid on;
+
+ax1(3) = subplot(3,1,3);
+plot(mu_paramVec,diffAbsCharMult,mu_paramVec(1:end-1),diff(diffAbsCharMult))
+legend(sprintf('x = (|char. Mult. 1| > |char. Mult. %d|)',b1),'diff(x)','Location','SouthWest');
+axis tight; grid on;
+xlabel('\mu (-)');
+
+% ax1(3) = subplot(3,1,3)
+% plot(mu_paramVec(1:end-1),abs(diff(abs(absCharMult1) - abs(absCharMultb1)> 0)))
+
+
+idxMuVec = mu_paramVec < 3;
+
+mu_paramVec_idx = mu_paramVec(idxMuVec);
+
+% figure;
+% subplot(2,1,1)
+% plot(mu_paramVec_idx,real(CharMult(idxMuVec,1)),...
+%     mu_paramVec_idx,real(CharMult(idxMuVec,b1)));
+
+
 
 
 % figure;
 % plot(real(CharMult(:,1)),imag(CharMult(:,1)),'kx')
 % hold on;
 % plot(real(CharMult(:,2)),imag(CharMult(:,2)),'bx')
-% 
+%
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Korrektur der Ergebnisse
