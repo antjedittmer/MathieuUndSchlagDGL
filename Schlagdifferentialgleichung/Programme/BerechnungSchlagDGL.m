@@ -14,13 +14,13 @@ T = 2*pi;         % Periodendauer
 %% Auswahl, welcher Rotor berechnet werden soll
 %(bitte entkommentieren)
 
-Auswahl=1;Blatt=3; %3-Blatt-Rotor, see-saw
+%Auswahl=1;Blatt=3; %3-Blatt-Rotor, see-saw
 %Auswahl=2;Blatt=3; %3-Blatt-Rotor, voll gelenkig
 %Auswahl=3;Blatt=4; %4-Blatt-Rotor, voll gelenkig
 %Auswahl=4;Blatt=5; %5-Blatt-Rotor, voll gelenkig
 %Auswahl=5;Blatt=3; %3-Blatt-Rotor, gelenk-/lagerlos
 %Auswahl=6;Blatt=4; %4-Blatt-Rotor, gelenk-/lagerlos
-%Auswahl = 7; Blatt = 1; %Einzelblattkoordinaten im rotierenden System
+Auswahl = 7; Blatt = 1; %Einzelblattkoordinaten im rotierenden System
 
 if exist('Auswahl','var') ~= 1
     Auswahl = 100;    % fuer Fehlermeldung, wenn keine Auswahl getroffen wurde
@@ -138,8 +138,7 @@ for mu_param = mu_paramVec
     charMult = (eig(Monodromie))';
     [~,idxSort] = sort(real(charMult));
     charMultSort1 = charMult(idxSort);
-    %charMultSort1 = sort(charMult);
-
+    
     Re = real(charMult);
     absMult1Greater = 0; %abs(real(charMultSort1(1))) - abs(real(charMultSort1(b1)))> 0.1;
 
@@ -160,7 +159,7 @@ for mu_param = mu_paramVec
         end
         charMultSort2 = Re(vecIdx);
     end
-    charMultSort = charMultSort2;
+    charMultSort = charMultSort1;
     prevAbsMult1Greater = absMult1Greater;
 
     CharMult(idx,:) = [charMultSort,mu_param];
@@ -194,20 +193,7 @@ for mu_param = mu_paramVec
         buffer.Pos(idxC) = bufferTemp.Pos;
     end
 
-    % % Additionsterm n*2*pi/T
-
-    % diffReNeg0 = (Eig.Real1(b1) - Eig.Real1(1)) >= 0 & abs(Eig.Real1(b1) - Eig.Real1(1)) > 0.1;
-    % absMult1Greater = abs(real(charMultSort1(1))) - abs(real(charMultSort1(b1)))> 0.1;
-    % if cntN <= length(nuCSwitchVec) && ... % Sicherheitscheck, damit n nicht groesser wird als die Anzahl der 'Switchstellen'
-    %         mu_param > nuCSwitchVec(cntN) && ... % n nur bei erreichen der Switchstellen umstellen
-    %         abs(Eig.Imag(1) - Eig.Imag(b1)) < eps && ...% die Imaginaerteile muessen gleich sein
-    %         absMult1Greater ~= prevAbsMult1Greater
-    %         % diffReNeg0 ~= bufferDiffReNeg0 % die Realteile 'kreuzen' sich
-    %         % abs(Eig.Real(1) - Eig.Real(2)) < nuCSwitchValVec(cntN) % die Realteile 'kreuzen' sich
-    %     n =  n + 0.5;
-    %     cntN = cntN+1;
-    % end
-
+    %% Additionsterm n*2*pi/T
     absDiffCharMult = abs(CharMult(idx,1)) > abs(CharMult(idx,b1));
     if idx >1 && abs(prevAbsDiffCharMult - absDiffCharMult) > 0.1
         n =  n + 0.5;
@@ -301,17 +287,38 @@ excelfilename1 = fullfile(excelDir,excelfilename);
 writetable(tableCharPrint,excelfilename1);
 
 %% Code von Matthieuscher DGL
-figure(1);
+figure(100);
 ax1(1) = subplot(2,1,1);
 plot(MuMin:SW:MuMax,CharExRe(:,1),'*-', MuMin:SW:MuMax,CharExRe(:,b1),'o-',...
     MuMin:SW:MuMax,CharExIm(:,1),'*-',MuMin:SW:MuMax,CharExIm(:,b1),'o-');
 legend('Re(Exp1)', sprintf('Re(Exp%d)',b1),'Im(Exp1)',sprintf('Im(Exp%d)',b1),...
     'Location','SouthWest'); grid on;
+title(sprintf('Auswahl: %d; Blatt: %d', Auswahl, Blatt));
 ax1(2) = subplot(2,1,2);
 plot(MuMin:SW:MuMax,CharExRe1Cor,'*-', MuMin:SW:MuMax,CharExRe2Cor,'o-',...
     MuMin:SW:MuMax,CharExIm(:,1),'*-',MuMin:SW:MuMax,-CharExIm(:,1),'o-');
 grid on;
 linkaxes(ax1,'x')
+
+figure(102)
+lineCell = {'-','--','-.','-','--','-.'};
+
+for idx = 1: Blatt
+    if Blatt > 1
+        subplot(Blatt,1,idx);
+    end
+    plot(MuMin:SW:MuMax,CharExRe(:,idx),lineCell{idx},...
+        MuMin:SW:MuMax,CharExRe(:,idx+Blatt),lineCell{idx+Blatt});
+    grid on;
+    legend(cellRealCharacteristicExponent([idx,idx+Blatt]))
+    if idx == 1
+
+     title(sprintf('Auswahl: %d; Blatt: %d', Auswahl, Blatt));
+    end
+end
+xlabel('\mu (-)')
+
+
 
 % evSort = real(CharMult(:,1:2))';
 % figure;
