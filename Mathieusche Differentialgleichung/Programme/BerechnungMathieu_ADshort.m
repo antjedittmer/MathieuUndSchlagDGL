@@ -4,7 +4,7 @@
 
 clc; clear; close all;
 
-loadMat = 0;  % mat-file laden, wenn Ergebnisse mit gleichem D vorhanden
+loadMat = 1;  % mat-file laden, wenn Ergebnisse mit gleichem D vorhanden
 
 SW = 0.1; %stepwidth
 unt0 = 0; SW;
@@ -33,7 +33,7 @@ end
 Nz = 2;
 
 % Parameter
-DVec = 0.001; %[0.15; 0.001; 0.2];
+DVec = 0.15; %0.001; %[0.15; 0.001; 0.2]; 0.3; %
 
 % strDVec = {sprintf('%2.2f',DVec(1)); sprintf('%2.3f',DVec(2)); ...
 %     sprintf('%2.1f',DVec(3))};
@@ -65,6 +65,7 @@ for dIdx = 1: length(DVec)
     lenNuDiag = min(lenNu02,lenNuC2); % Anzahl Werte nu_02 == nu_C2
     Monodromie = zeros(Nz);
     CharEx = zeros(lenNuDiag,Nz*4+2); % nu, nc, Real1,2, Imag12, Imag1,2, Pole
+    nAddVector = nan(lenNuDiag,1);
     plotwertstabil = zeros(lenNu,3);
 
     %nuCSwitchVec = [0.1,1,1.5^2,2^2,2.5^2] - 0.1;
@@ -81,7 +82,7 @@ for dIdx = 1: length(DVec)
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
     if exist(fileName,'file') == 2 && loadMat == 1
-        load(fileName,'Char*','plotwert*', 'nu*');
+        load(fileName,'Char*','plotwert*', 'nu*','nAddVector');
 
     else
         % Zaehlvariablen
@@ -105,35 +106,34 @@ for dIdx = 1: length(DVec)
                 end
 
                 % Charakteristische Multiplikatoren (Eigenwerte der Monodromiematrix)
-                p = [1, -(Monodromie(1,1) + Monodromie(2,2)), ...
-                    Monodromie(1,1)*Monodromie(2,2)-Monodromie(1,2)*Monodromie(2,1)];
-                eP = roots(p);
-                %eBetr = abs(eP);
+                eP = eig(Monodromie);
 
                 %% Charakteristische Exponenten
                 if nu_C2 == nu_02
 
-                    % Berechne Real-und Imaginaerteile der Exponenten 
+                    % Berechne Real-und Imaginaerteile der Exponenten
                     Eig.Real = 1/T * log(abs(eP));
                     Eig.Imag = 1/T * atan(imag(eP)./real(eP));
 
                     % Korrigiere Imaginaerteil fuer kontinuierlichen
                     % Verlauf
-                   [Eig,buffer] = correctImagValues(Eig,buffer);
-                 
+                    [Eig,buffer] = correctImagValues(Eig,buffer);
+
                     % % Additionsterm n*2*pi/T
                     if cntN <= length(nuCSwitchVec) && ... % Sicherheitscheck, damit n nicht groesser wird als die Anzahl der 'Switchstellen'
                             nu_C2 > nuCSwitchVec(cntN) && ... % n nur bei erreichen der Switchstellen umstellen
-                            abs(Eig.Real(1) - Eig.Real(2))> eps % die Imaginaerteile muessen gleich sein 
+                            abs(Eig.Real(1) - Eig.Real(2))> eps % die Imaginaerteile muessen gleich sein
                         n =  n + 0.5;
                         cntN = cntN+1;
                     end
 
-                    nAdd = n*2*pi/T; % 
+                    nAdd = n*2*pi/T; %
                     ImagEigSortN = [Eig.ImagCorrectedNeg, Eig.ImagCorrected] + [-nAdd,nAdd];
 
                     CharEx(oidx,:) = [nu_02, nu_C2, Eig.Real', min(Eig.ImagSort), max(Eig.ImagSort), ImagEigSortN, eP'];
+                    nAddVector(oidx) = nAdd;
                     oidx = oidx + 1;
+
 
                 end
 
@@ -151,7 +151,7 @@ for dIdx = 1: length(DVec)
 
         % Loeschen der reinen 0-Zeilen
         plotwertstabil =  plotwertstabil(any(plotwertstabil,2),:);
-        save(fileName,'Char*','plotwert*', 'nu*');
+        save(fileName,'Char*','plotwert*', 'nu*','nAddVector');
     end
 
 
@@ -233,9 +233,52 @@ for dIdx = 1: length(DVec)
     pngname = fullfile(fDir,strrep(matName,'.mat',''));
     print(pngname, '-dpng')
 
+
+    %
+    hf1 = figure(dIdx+100);
+
+    try tiledlayout(2,1); catch, end% tiledlayout nicht unter R2007 verfuegbar
+
+    try h(1) = nexttile; catch, h(1) = subplot(2,1,1);  end %
+    plot(xachse,CharEx(:,3:4)); grid on;
+    title({['$\ddot{\phi} + 2D \dot{\phi} + (\nu^2_0 + \nu^2_C \cos(\psi))\phi = 0$, D = ', num2str(D,2), ', $\nu_C = \nu_0 $']...
+        '$\Re(s_{Ri}) = 1/2\pi\ln(|\mu_{Ri}|)$, $\mu_{Ri}$: Eigenvalue monodromy matrix'},'interpreter','latex','FontSize', fs+2) % \text{atan}
+    ylabel('$\Re(s_R) \;\; \rm{[-]}$','interpreter','latex','FontSize', fs+2);
+
+    try h(1) = nexttile; catch, h(1) = subplot(2,1,2);  end %
+    plot(xachse,CharEx(:,7:8)); hold on;  grid on;
+    try
+        %plot(xachse,nAddVector,'--','Color',0.5*ones(3,1))
+        idxMVec = [0,diff(nAddVector)]>0;
+        idxM = xachse(idxMVec);
+        for idxPl = 1: length(idxM)
+            plot(idxM(idxPl)*ones(2,1), get(gca,'ylim'),'Color',0.5*ones(3,1),'LineWidth',1);
+        end
+        for idxPl = 1: length(idxM)
+            tmp = nAddVector(idxMVec);
+            text( idxM(idxPl) + 0.1, max(get(gca,'ylim'))-1, num2str(tmp(idxPl),2),'interpreter','latex','FontSize', fs+1);
+        end
+
+        nAddVector(idxMVec)
+
+        legend('$s_{R1}$','$s_{R2}$','increase in m', 'interpreter','latex','Location','SouthEast','FontSize', fs+1)
+
+        title('$\Im(s_{Ri}) = 1/2\pi (\arctan(\Im(\mu_{Ri})/\Re(\mu_{Ri})) + m$','interpreter','latex','FontSize', fs+2)
+
+    catch
+    end
+    xlabel('$\rm{Parameter} \; \nu_C^2 \;\;\rm{[-]}$','interpreter','latex','FontSize', fs+2);
+    ylabel('$\Im(s_R) \;\; \rm{[-]}$','interpreter','latex','FontSize', fs+2); %'Position', [-0.5 -D]
+
+    pngname = fullfile(fDir,strrep(strrep(strrep(matName,'.mat',''),'STRUTTscheKarte','CharExp'),'_unt0',''));
+    print(pngname, '-dpng')
+
+
+
 end
 
 %% Unused Code
+
 % if SW <= 0.01 && 0
 %     idxVec = 1:25:length(CharEx);
 %     fileName1 = strrep(fileName,'SW1dot0e-02','SW5dot0e-02');
