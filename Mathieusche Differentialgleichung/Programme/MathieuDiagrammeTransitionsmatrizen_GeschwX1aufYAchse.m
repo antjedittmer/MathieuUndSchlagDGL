@@ -1,7 +1,7 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Erzeugen der Diagramme fuer die Verlaeufe der Transitionsmatrizen
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function MathieuDiagrammeTransitionsmatrizen_GeschwX1aufYAchse
+%function MathieuDiagrammeTransitionsmatrizen_GeschwX1aufYAchse
 clc; close all;
 
 isInterpTex = 0; %1: Tex interpreter, 0: Latex interpreter
@@ -138,7 +138,6 @@ for dIdx = 1: length(DVec)
 
 end
 
-end
 
 function [noF,hAxis]  = plot3D(noF,tspan,Gesch1,Pos1,T,AxisLimitsYZ,strP,labelPos,titleStr,pngfile,plot2D,isInterpTex)
 

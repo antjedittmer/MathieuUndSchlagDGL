@@ -1,7 +1,7 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Erzeugen der Diagramme fuer die Verlaeufe der Transitionsmatrizen
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function [DVec, MonodromieCell, pCell, ePcell] = MathieuDiagrammeTransitionsmatrizen_GeschwX1PosX2
+%function [DVec, MonodromieCell, pCell, ePcell] = MathieuDiagrammeTransitionsmatrizen_GeschwX1PosX2
 clc; close all; 
 
 isInterpTex = 0; %1: Tex interpreter, 0: Latex interpreter
@@ -82,22 +82,7 @@ for dIdx = 1 : lVec
     eP = roots(p);
     ePcell{dIdx} = eP';
 
-        %% Charakteristische Exponenten
-               
-                    RealEig = 1/T * log(abs(eP));
-                    ImagEig = 1/T * atan(imag(eP)./real(eP));
-                    [~,idx] = sort(ImagEig);
-                    ImagEigSort = ImagEig(idx);
-
-                    if cntN <= length(nuCSwitchVec) && ...
-                            nu_C2 > nuCSwitchVec(cntN) && ...
-                            abs(RealEig(1) - RealEig(2))> eps
-                        n =  n + 0.5;
-                        cntN = cntN+1;
-                    end
-                    n = 2.5;
-
-   
+     
     % Geschwindigkeit und Position
     Gesch1 = y1(1,:)';
     Pos1 = y1(2,:)';
@@ -170,8 +155,6 @@ end
 
 try head(table(DVec,MonodromieCell,pCell,ePcell));
 catch  DVec,MonodromieCell,pCell,ePcell %#ok<NOPRT>
-end
-
 end
 
 function [noF,hAxis]  = plot3D(noF,tspan,Gesch1,Pos1,T,AxisLimitsYZ,strP,labelPos,titleStr,pngfile,plot2D,isInterpTex)
