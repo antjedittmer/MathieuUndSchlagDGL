@@ -9,7 +9,7 @@ function  [Eig, buffer] = correctImagValues(Eig, buffer)
 
 % Zwei Checks fuer das korrekte Format
 if nargin~= 2
-    error('Two inputs are expected: The current imaginary part of the eigenvalues and the buffer with the last values');
+   error('Two inputs are expected: The current imaginary part of the eigenvalues and the buffer with the last values');
 end
 
 if max(size(Eig.Imag))~= 2 || min(size(Eig.Imag))~= 1
