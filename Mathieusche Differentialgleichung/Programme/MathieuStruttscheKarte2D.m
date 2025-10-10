@@ -238,8 +238,8 @@ if ~isfield(buffer, 'Neg'), buffer.Neg = 0; end
 if buffer.Pos <= tmp || (abs(tmp) < 10^-5) % Wert uebernehmen
     Eig.ImagCorrected = tmp; % steigender pos. Wert
     Eig.ImagCorrectedNeg = tmpNeg;  % fallender neg. Wert
-    % buffer.Pos = 0; % Removed based on original logic, these were only placeholders
-    % buffer.Neg = 0;
+    buffer.Pos = 0; % Removed based on original logic, these were only placeholders
+    buffer.Neg = 0;
 else  % 'korrigierten' Wert nehmen fuer kontinuierlichen Verlauf
     % Wird der 'else'-Zweig getriggert, ist der buffer
     % bei 90 Grad (1.57 rad). Der positive Imaginaerteil ist damit
