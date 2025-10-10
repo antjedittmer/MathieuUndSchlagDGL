@@ -74,40 +74,10 @@ for dIdx = 1: length(DVec)
                 options = odeset('RelTol',1e-10,'AbsTol',1e-12);
                 
                 % DGL System muss als separate function 'MathieuDGL(psi,x,D,nu_02,nu_C2)' existieren
-                for k = 1 : Nz
-                    % Placeholder for actual call to DGL function
-                    % Note: MathieuDGL must be defined elsewhere or in a sub-function
-                    % sol = ode45(@(psi,x)MathieuDGL(psi,x,D,nu_02,nu_C2),[t0,T],Diagonal(:,k),options);
-                    
-                    % To make the script runnable without the missing function,
-                    % we must assume the output 'sol' is correctly generated.
-                    % For a minimal example, we can skip the actual ODE solve
-                    % or define a dummy function. Since the prompt uses the
-                    % loaded data path, we will assume the calculation is correct.
-                    % NOTE: The actual ode45 call is commented out below to prevent
-                    % runtime errors due to the missing 'MathieuDGL' function,
-                    % but the subsequent calculation logic is kept.
-                    
-                    % sol = ode45(@(psi,x)MathieuDGL(psi,x,D,nu_02,nu_C2),[t0,T],Diagonal(:,k),options);
-                    % MonoVek  = deval(sol,T);
-                    
-                    % Placeholder to allow compilation/execution flow
-                    % Since this is a core part, if the function is missing,
-                    % the script will fail. The provided code assumes
-                    % 'MathieuDGL' exists. We will keep the original lines.
-                    try
+                for k = 1 : Nz        
                         sol = ode45(@(psi,x)MathieuDGL(psi,x,D,nu_02,nu_C2),[t0,T],Diagonal(:,k),options);
                         MonoVek  = deval(sol,T);
                         Monodromie(:,k) = MonoVek;
-                    catch ME
-                        % In a real application, you'd handle the error.
-                        % Here, we just continue the original logic.
-                        if strcmp(ME.identifier, 'MATLAB:UndefinedFunction')
-                            % Use dummy Monodromie for structure integrity, though results will be wrong
-                            Monodromie = diag([1.01 0.99]); 
-                        end
-                        break; 
-                    end
                 end
                 
                 % Characteristic Multipliers (Eigenwerte der Monodromiematrix)
@@ -284,14 +254,3 @@ buffer.Neg = min(tmpNeg,buffer.Neg); % Minimum speichern
 % Anmerkung: hier kammen leider andere Werte raus als bei atanh
 % Eig.ImagAngle = 1/T * angle(imag(eP)./real(eP));
 end
-
-% NOTE: The function 'MathieuDGL' is still missing. It would be a separate
-% function file or a sub-function defining the system of ODEs for the
-% damped Mathieu equation:
-%
-% function dxdt = MathieuDGL(psi, x, D, nu_02, nu_C2)
-% % x(1) = phi, x(2) = dphi/dpsi
-% dxdt = zeros(2,1);
-% dxdt(1) = x(2);
-% dxdt(2) = -2*D*x(2) - (nu_02 + nu_C2 * cos(psi))*x(1);
-% end
