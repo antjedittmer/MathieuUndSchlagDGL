@@ -1,5 +1,9 @@
 load("Workspace.mat");
 
+if ~isdir('Plots') %#ok<ISDIR>
+    mkdir('Plots');
+end
+
 xachse = MuMin:SW:MuMax;
 
 CharExRe1 = CharExRe(:,1);
@@ -24,3 +28,5 @@ legend('Re1','Re2',' Neg.Re-Wert', 'Korrigierter Wert','Location','eastoutside')
 subplot(2,1,2)
 plot(xachse,CharExRe1Cor, xachse,CharExRe2Cor)
 legend('Re1 korrigiert','Re2 korrigiert','Location','eastoutside')
+
+print(fullfile('Plots','testMirroredCharExp'),'-dpng')
