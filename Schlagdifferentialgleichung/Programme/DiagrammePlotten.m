@@ -10,8 +10,10 @@
 
 %% allgemein gueltiger Code zum Plotten aller Faelle
 clc; clear; close all
-
-load("Workspace_ebeta0dot153_mu0_mu10.mat","damp","freq","MuMin","SW","MuMax", ...
+% 
+% load("Workspace_ebeta0dot153_mu0_mu10.mat","damp","freq","MuMin","SW","MuMax", ...
+%     "CharExRe","CharExIm","nu0","Blatt")
+load("Workspace_ebeta0dot000_mu0_mu10_Auswahl1.mat","damp","freq","MuMin","SW","MuMax", ...
     "CharExRe","CharExIm","nu0","Blatt")
 
 xachse = MuMin:SW:MuMax; % Diagrammgrenzen
@@ -51,7 +53,7 @@ end
 figure(nFig); nFig = nFig + 1;
 
 ax1(1) = subplot(2,1,1);
-plot(xachse,CharExRe,'LineWidth',1.5,'Color','k');
+plot(xachse,CharExRe,'.','LineWidth',1.5,'Color','k');
 % set(gca,'ydir', 'reverse');
 grid on;
 xlabel('$\mu$','interpreter','latex','FontSize', 14);

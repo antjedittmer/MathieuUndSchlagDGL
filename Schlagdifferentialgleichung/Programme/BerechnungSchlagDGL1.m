@@ -49,7 +49,7 @@ Par = table2array(Parameter);
 
 rho = Par(26,1);
 
-ebeta = 0.3; %Par(8,Auswahl);
+ebeta = Par(8,Auswahl);% 0.3; %Par(8,Auswahl);
 gamma = Par(13,Auswahl);
 d2 = Par(17,Auswahl);
 d3 = Par(18,Auswahl);
@@ -309,6 +309,9 @@ plot(MuMin:SW:MuMax,CharExRe(:,1),'*-', MuMin:SW:MuMax,CharExRe(:,Blatt +1),'o-'
 hold on;
 plot(MuMin:SW:MuMax,CharExIm(:,1),'*-',MuMin:SW:MuMax,CharExIm(:,Blatt +1),'o-');
 
+legend("Re(s1)","Re(s2)","Im(s1)","Im(s2)","Location","northwest");
+xlabel("\mu (-)");
+ylabel("char. exponent (-)");
 
 figure;
 % subplot(2,1,1);
