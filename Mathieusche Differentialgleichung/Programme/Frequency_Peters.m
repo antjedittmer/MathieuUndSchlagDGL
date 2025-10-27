@@ -18,12 +18,12 @@ K = 'ColoredLines';
 useK = strcmp(K,'BlackLines');
 
 % --- Parameters ---
-w_sq = 0.7^2;    % Natural frequency squared (w=0.7, as in the paper)
+w_sq = 0.3^2;    % Natural frequency squared (w=0.7, as in the paper)
 w = sqrt(w_sq);  % Natural frequency w = 0.7
 Omega = 1;       % Fundamental frequency (1/rev)
 
-pngname = strrep(sprintf('PetersFrequency%s_%2.1f.png',K,w),'.','dot');
-pngfile = fullfile(fDirPeters,pngname);
+pngname = strrep(sprintf('PetersFrequency%s_%2.1f',K,w),'.','dot');
+pngfile = fullfile(fDirPeters,[pngname,'.png']);
 
 
 % Updated range to cover requested x-axis limit (0 to 3.5)
