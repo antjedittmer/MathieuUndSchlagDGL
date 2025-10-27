@@ -12,19 +12,30 @@ fDirPeters = fullfile(fDir,'figureFolderPeters');
 if ~isdir(fDirPeters) %#ok<ISDIR>
     mkdir(fDirPeters)
 end
+
 K = 'ColoredLines';
 % K = 'BlackLines';
 useK = strcmp(K,'BlackLines');
-pngname = sprintf('PetersFrequency%s.png',K);
-pngfile = fullfile(fDirPeters,pngname);
 
 % --- Parameters ---
 w_sq = 0.7^2;    % Natural frequency squared (w=0.7, as in the paper)
 w = sqrt(w_sq);  % Natural frequency w = 0.7
 Omega = 1;       % Fundamental frequency (1/rev)
 
+pngname = strrep(sprintf('PetersFrequency%s_%2.1f.png',K,w),'.','dot');
+pngfile = fullfile(fDirPeters,pngname);
+
+
 % Updated range to cover requested x-axis limit (0 to 3.5)
-eps_vals = linspace(0, 3.5, 150);
+if abs(w - 0.3) <0.001
+    eps_end = 5; %  x axis limit in AHS2009 paper
+    eps_no = 1000; % needs to be high to visualize steep flank at 3.5
+else
+    eps_end = 3.5; % axis limit in JAHS2011 paper
+    eps_no = 150; % original value
+end
+
+eps_vals = linspace(0, eps_end, eps_no);
 m_range = (-4:4); % Integer multiple range for plotting branches
 
 % Structure to hold results, organized by branch 'm'
@@ -120,7 +131,7 @@ for m = m_range
 end
 
 % Set Axis limits as requested
-axis([0 3.5 0 4.5]);
+axis([0 eps_end 0 4.5]);
 grid on;
 
 set(gca, 'TickLabelInterpreter', 'latex');
