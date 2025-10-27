@@ -3,13 +3,28 @@
 
 clear; clc; close all;
 
+fDir = 'figureFolder'; % Ordner Abbildungen
+if ~isdir(fDir) %#ok<ISDIR>
+    mkdir(fDir)
+end
+
+fDirPeters = fullfile(fDir,'figureFolderPeters');
+if ~isdir(fDirPeters) %#ok<ISDIR>
+    mkdir(fDirPeters)
+end
+K = 'ColoredLines';
+% K = 'BlackLines';
+useK = strcmp(K,'BlackLines');
+pngname = sprintf('PetersFrequency%s.png',K);
+pngfile = fullfile(fDirPeters,pngname);
+
 % --- Parameters ---
 w_sq = 0.7^2;    % Natural frequency squared (w=0.7, as in the paper)
 w = sqrt(w_sq);  % Natural frequency w = 0.7
 Omega = 1;       % Fundamental frequency (1/rev)
 
 % Updated range to cover requested x-axis limit (0 to 3.5)
-eps_vals = linspace(0, 3.5, 150); 
+eps_vals = linspace(0, 3.5, 150);
 m_range = (-4:4); % Integer multiple range for plotting branches
 
 % Structure to hold results, organized by branch 'm'
@@ -30,33 +45,33 @@ x0 = eye(2); % Intial state as identity matrix
 
 for k = 1:length(eps_vals)
     epsilon = eps_vals(k);
-    
+
     % The state matrix D(t) for x' = D(t)x, where x = [x; x_dot]
     D_func = @(t) [0, 1; -(w_sq + epsilon*sin(t)), 0];
-    
-    
+
+
     % Solve the Transition Matrix Phi(T)
     [~, Phi_t] = ode45(@(t, x) reshape(D_func(t) * reshape(x, 2, 2), 4, 1), [0, T], reshape(x0, 4, 1));
     Phi_T = reshape(Phi_t(end, :), 2, 2); % Transition Matrix at T
-    
+
     % Floquet Exponents (eta = 1/T * log(Lambda))
     Lambda = eig(Phi_T);
     eta = log(Lambda) / T;
-    
+
     % Extract Imaginary Part (normalized frequency), omega/Omega
     normalized_omega = imag(eta) / Omega;
-    
+
     % --- Separate and Store Branches (m) ---
-    for r = 1:length(normalized_omega) 
+    for r = 1:length(normalized_omega)
         freq_r = normalized_omega(r);
-        
+
         % 1. Find the basis frequency (principal value in the range [-0.5, 0.5])
         basis_freq = mod(freq_r + 0.5, 1) - 0.5;
-        
+
         % 2. Calculate and store all possible branches m for this single root 'r'
         for m = m_range
             branch_freq = basis_freq + m;
-            
+
             % FIX: Determine the valid field name
             if m < 0
                 field_name = ['m_neg_', num2str(abs(m))];
@@ -91,18 +106,21 @@ for m = m_range
         field_name = ['m_', num2str(m)];
         label = ['[+', num2str(m), ']']; % e.g., [+0]
     end
-    
+
     % Plot the data for this specific branch 'm'
     data = results_by_branch.(field_name);
-    
-    % Plot using dots/scatters to show calculated points, which, when dense, form curves
-    plot(data(:, 1), data(:, 2), '.', 'Color', color_map(idx, :), 'MarkerSize', 8, 'DisplayName', label);
 
+    % Plot using dots/scatters to show calculated points, which, when dense, form curves
+    if useK == 1
+        plot(data(:, 1), data(:, 2), '.', 'Color','k', 'MarkerSize', 8, 'DisplayName', label);
+    else
+        plot(data(:, 1), data(:, 2), '.', 'Color', color_map(idx, :), 'MarkerSize', 8, 'DisplayName', label);
+    end
     idx = idx + 1;
 end
 
 % Set Axis limits as requested
-axis([0 3.5 0 4.5]); 
+axis([0 3.5 0 4.5]);
 grid on;
 
 set(gca, 'TickLabelInterpreter', 'latex');
@@ -134,3 +152,6 @@ text(2.8, 2.55, '[-3/+3]', 'FontSize', 10, 'Interpreter', 'latex');
 text(2.8, 3.55, '[-4/+4]', 'FontSize', 10, 'Interpreter', 'latex');
 
 hold off;
+
+% Print to Png file
+print(pngfile, '-dpng')
