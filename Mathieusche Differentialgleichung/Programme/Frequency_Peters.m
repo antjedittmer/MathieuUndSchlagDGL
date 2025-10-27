@@ -26,7 +26,8 @@ end
 
 % --- Floquet Exponent Calculation ---
 T = 2*pi/Omega; % Period
-x0 = eye(2);
+x0 = eye(2); % Intial state as identity matrix
+
 for k = 1:length(eps_vals)
     epsilon = eps_vals(k);
     
@@ -35,7 +36,6 @@ for k = 1:length(eps_vals)
     
     
     % Solve the Transition Matrix Phi(T)
-    
     [~, Phi_t] = ode45(@(t, x) reshape(D_func(t) * reshape(x, 2, 2), 4, 1), [0, T], reshape(x0, 4, 1));
     Phi_T = reshape(Phi_t(end, :), 2, 2); % Transition Matrix at T
     
@@ -47,7 +47,7 @@ for k = 1:length(eps_vals)
     normalized_omega = imag(eta) / Omega;
     
     % --- Separate and Store Branches (m) ---
-    for r = 1:length(normalized_omega)
+    for r = 1:length(normalized_omega) 
         freq_r = normalized_omega(r);
         
         % 1. Find the basis frequency (principal value in the range [-0.5, 0.5])
@@ -81,7 +81,7 @@ xlabel('$\epsilon$', 'Interpreter', 'latex');
 ylabel('Frequency ($\omega$)', 'Interpreter', 'latex');
 
 m_labels = {};
-i = 1;
+idx = 1;
 for m = m_range
     % Determine field name and label string
     if m < 0
@@ -96,9 +96,9 @@ for m = m_range
     data = results_by_branch.(field_name);
     
     % Plot using dots/scatters to show calculated points, which, when dense, form curves
-    plot(data(:, 1), data(:, 2), '.', 'Color', color_map(i, :), 'MarkerSize', 8, 'DisplayName', label);
+    plot(data(:, 1), data(:, 2), '.', 'Color', color_map(idx, :), 'MarkerSize', 8, 'DisplayName', label);
 
-    i = i + 1;
+    idx = idx + 1;
 end
 
 % Set Axis limits as requested
