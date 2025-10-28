@@ -20,7 +20,7 @@ useK = strcmp(K,'BlackLines');
 % -----------------------------------------------------------------------
 % --- Parameters and Initialization ---
 % -----------------------------------------------------------------------
-w_sq = 0.7^2;    % Natural frequency squared (w=0.7 to match figure 7)
+w_sq = 0.3^2;    % Natural frequency squared (w=0.7 to match figure 7)
 w = sqrt(w_sq);  % Natural frequency w = 0.7
 Omega = 1;       % Fundamental angular frequency (rad per unit time)
 T = 2*pi / Omega;  % Period of the parametric coefficient (T = 2*pi)
