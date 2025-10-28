@@ -131,8 +131,8 @@ for m = m_range
 end
 
 % Set Axis limits as requested
-%axis([0 eps_end 0 4.5]);
-axis([0 eps_end -4.25 4.25]);
+axis([0 eps_end 0 4.5]);
+% axis([0 eps_end -4.25 4.25]);
 grid on;
 
 set(gca, 'TickLabelInterpreter', 'latex');
