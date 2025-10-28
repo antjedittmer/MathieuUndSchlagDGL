@@ -1,17 +1,34 @@
-% modal_participation_w07_final_corrected_v3.m
+% modal_participation_w07.m
 % Computes normalized harmonic modal participation vs epsilon for w = 0.3
 % using mode tracking (continuation) for stability.
 
 clear; clc; close all;
+
+fDir = 'figureFolder'; % Ordner Abbildungen
+if ~isdir(fDir) %#ok<ISDIR>
+    mkdir(fDir)
+end
+
+fDirPeters = fullfile(fDir,'figureFolderPeters');
+if ~isdir(fDirPeters) %#ok<ISDIR>
+    mkdir(fDirPeters)
+end
+
+K = 'BlackLines';
+useK = strcmp(K,'BlackLines');
+
 % -----------------------------------------------------------------------
 % --- Parameters and Initialization ---
 % -----------------------------------------------------------------------
-w_sq = 0.3^2;    % Natural frequency squared (w=0.3 to match figure 7)
-w = sqrt(w_sq);  % Natural frequency w = 0.3
+w_sq = 0.7^2;    % Natural frequency squared (w=0.7 to match figure 7)
+w = sqrt(w_sq);  % Natural frequency w = 0.7
 Omega = 1;       % Fundamental angular frequency (rad per unit time)
 T = 2*pi / Omega;  % Period of the parametric coefficient (T = 2*pi)
 
-N_FFT = 4096;    % Number of points for accurate FFT (Good value)
+pngname = strrep(sprintf('PetersHarmonicparticipatio%s_%2.1f',K,w),'.','dot');
+pngfile = fullfile(fDirPeters,[pngname,'.png']);
+
+N_FFT = 4092;    % Number of points for accurate FFT (Good value)
 N_eps = 400;     % Number of epsilon steps
 eps_vals = linspace(0, 5.0, N_eps); % Range of epsilon (0 to 5.0)
 
@@ -26,7 +43,7 @@ all_participation_points = cell(N_eps, 1);
 % Target mode: The stable free vibration mode starts at eta = +/- i*w.
 % We arbitrarily track the mode starting at eta = -i*w, which typically
 % corresponds to the largest 'm=0' component (phi_0 ~ 1.0).
-eta_initial_target = -1i * w * Omega;
+eta_initial_target = -1 * w * Omega;
 eta_mode_prev = eta_initial_target;
 x0 = eye(2); % Initial state matrix Phi(0) = I
 
@@ -113,7 +130,7 @@ end
 % -----------------------------------------------------------------------
 figure('Color','w','Units','pixels','Position',[200 200 900 400]);
 hold on;
-title('Modal Participation, $\omega = 0.3$ (Mode tracked from $-0.3$)', 'Interpreter', 'latex');
+title('Modal Participation, $\omega = 0.7$', 'Interpreter', 'latex');
 xlabel('$\epsilon$', 'FontSize', 14, 'Interpreter', 'latex');
 ylabel('Modal Participation', 'FontSize', 14, 'Interpreter', 'latex');
 grid on;
@@ -157,9 +174,7 @@ text(4.5, 0.30, '[+0]', 'Interpreter', 'latex', 'FontSize', 12, 'FontWeight', 'b
 text(4.0, 0.07, '[-3/+3]', 'Interpreter', 'latex', 'FontSize', 12, 'FontWeight', 'bold');
 text(4.0, 0.15, '[-2/+2]', 'Interpreter', 'latex', 'FontSize', 12, 'FontWeight', 'bold');
 
-% Adding the figure caption
-annotation('textbox', [0.1 0.01 0.8 0.05], 'String', ...
-    'Figure 7. Harmonic participation for w=0.3 (Numerical Simulation)', ...
-    'EdgeColor', 'none', 'FontSize', 12, 'HorizontalAlignment', 'center');
-
 hold off;
+
+% Print to Png file
+print(pngfile, '-dpng')
