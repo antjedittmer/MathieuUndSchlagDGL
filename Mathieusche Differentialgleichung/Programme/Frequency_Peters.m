@@ -18,7 +18,7 @@ K = 'ColoredLines';
 useK = strcmp(K,'BlackLines');
 
 % --- Parameters ---
-w_sq = 0.3^2;    % Natural frequency squared (w=0.7, as in the paper)
+w_sq = 0.7^2;    % Natural frequency squared (w=0.7, as in the paper)
 w = sqrt(w_sq);  % Natural frequency w = 0.7
 Omega = 1;       % Fundamental frequency (1/rev)
 
