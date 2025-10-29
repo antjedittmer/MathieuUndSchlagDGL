@@ -20,7 +20,7 @@ useK = strcmp(K,'BlackLines');
 % -----------------------------------------------------------------------
 % --- Parameters and Initialization ---
 % -----------------------------------------------------------------------
-w_sq = 0.3^2;    % Natural frequency squared (w=0.7 to match figure 7)
+w_sq = 0.7^2;    % Natural frequency squared (w=0.7 to match figure 7)
 w = sqrt(w_sq);  % Natural frequency w = 0.7
 Omega = 1;       % Fundamental angular frequency (rad per unit time)
 T = 2*pi / Omega;  % Period of the parametric coefficient (T = 2*pi)
@@ -40,11 +40,12 @@ m_range = -3:3;
 all_participation_points = cell(N_eps, 1);
 
 % --- Initialization for Mode Tracking ---
-% Target mode: The stable free vibration mode starts at eta = +/- i*w.
-% We arbitrarily track the mode starting at eta = -i*w, which typically
-% corresponds to the largest 'm=0' component (phi_0 ~ 1.0).
-eta_initial_target = -1 * w * Omega;
+% Target mode: The stable free vibration mode starts near eta = ±w.
+% We track the mode starting at eta = -w*Omega, which typically
+% corresponds to the largest 'm = 0' component (phi_0 ~ 1.0).
+eta_initial_target = -w * Omega;   % (Real-valued initialization, no 'i')
 eta_mode_prev = eta_initial_target;
+
 x0 = eye(2); % Initial state matrix Phi(0) = I
 
 % -----------------------------------------------------------------------
@@ -163,16 +164,33 @@ end
 axis([0 5.0 0 1.0]); % Set axis limits
 set(gca, 'YTick', 0:0.2:1); % Clean up y-ticks
 
-% Annotate labels based on Figure 7 (Visual guide only)
-text(0.1, 0.8, '[+0]', 'Interpreter', 'latex', 'FontSize', 12, 'FontWeight', 'bold');
-text(0.15, 0.3, '[-1]', 'Interpreter', 'latex', 'FontSize', 12, 'FontWeight', 'bold');
-text(1.2, 0.45, '[-1/+0]', 'Interpreter', 'latex', 'FontSize', 12, 'FontWeight', 'bold');
-text(1.2, 0.15, '[-2/+1]', 'Interpreter', 'latex', 'FontSize', 12, 'FontWeight', 'bold');
-text(1.6, 0.07, '[-3/+2]', 'Interpreter', 'latex', 'FontSize', 12, 'FontWeight', 'bold');
-text(4.5, 0.18, '[-1/+1]', 'Interpreter', 'latex', 'FontSize', 12, 'FontWeight', 'bold');
-text(4.5, 0.30, '[+0]', 'Interpreter', 'latex', 'FontSize', 12, 'FontWeight', 'bold');
-text(4.0, 0.07, '[-3/+3]', 'Interpreter', 'latex', 'FontSize', 12, 'FontWeight', 'bold');
-text(4.0, 0.15, '[-2/+2]', 'Interpreter', 'latex', 'FontSize', 12, 'FontWeight', 'bold');
+% -----------------------------------------------------------------------
+% --- Annotate labels based on frequency ---
+% -----------------------------------------------------------------------
+if abs(w - 0.3) < 1e-6
+    % ----- Labels for w = 0.3 -----
+    text(0.1, 0.8, '[+0]', 'Interpreter', 'latex', 'FontSize', 12, 'FontWeight', 'bold');
+    text(0.15, 0.3, '[-1]', 'Interpreter', 'latex', 'FontSize', 12, 'FontWeight', 'bold');
+    text(1.2, 0.45, '[-1/+0]', 'Interpreter', 'latex', 'FontSize', 12, 'FontWeight', 'bold');
+    text(1.2, 0.15, '[-2/+1]', 'Interpreter', 'latex', 'FontSize', 12, 'FontWeight', 'bold');
+    text(1.6, 0.07, '[-3/+2]', 'Interpreter', 'latex', 'FontSize', 12, 'FontWeight', 'bold');
+    text(4.5, 0.18, '[-1/+1]', 'Interpreter', 'latex', 'FontSize', 12, 'FontWeight', 'bold');
+    text(4.5, 0.30, '[+0]', 'Interpreter', 'latex', 'FontSize', 12, 'FontWeight', 'bold');
+    text(4.0, 0.07, '[-3/+3]', 'Interpreter', 'latex', 'FontSize', 12, 'FontWeight', 'bold');
+    text(4.0, 0.15, '[-2/+2]', 'Interpreter', 'latex', 'FontSize', 12, 'FontWeight', 'bold');
+
+elseif abs(w - 0.7) < 1e-6
+    % ----- Labels for w = 0.7 -----
+    text(0.1, 0.8, '[-1]', 'Interpreter', 'latex', 'FontSize', 12, 'FontWeight', 'bold');
+    text(0.15, 0.3, '[+0]', 'Interpreter', 'latex', 'FontSize', 12, 'FontWeight', 'bold');
+    text(1.2, 0.45, '[+0/-1]', 'Interpreter', 'latex', 'FontSize', 12, 'FontWeight', 'bold');
+    text(1.2, 0.15, '[+1/-2]', 'Interpreter', 'latex', 'FontSize', 12, 'FontWeight', 'bold');
+    text(1.6, 0.07, '[+2/-3]', 'Interpreter', 'latex', 'FontSize', 12, 'FontWeight', 'bold');
+    text(4.5, 0.18, '[+1/-1]', 'Interpreter', 'latex', 'FontSize', 12, 'FontWeight', 'bold');
+    text(4.5, 0.30, '[-1]', 'Interpreter', 'latex', 'FontSize', 12, 'FontWeight', 'bold');
+    text(4.0, 0.07, '[+3/-3]', 'Interpreter', 'latex', 'FontSize', 12, 'FontWeight', 'bold');
+    text(4.0, 0.15, '[+2/-2]', 'Interpreter', 'latex', 'FontSize', 12, 'FontWeight', 'bold');
+end
 
 hold off;
 
