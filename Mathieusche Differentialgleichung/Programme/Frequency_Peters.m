@@ -136,7 +136,12 @@ axis([0 eps_end 0 4.5]);
 grid on;
 
 set(gca, 'TickLabelInterpreter', 'latex');
+% --- ADD LEGEND ONLY IF COLORED ---
+if ~useK
+    legend('Location', 'northeastoutside', 'Interpreter', 'latex');
+end
 hold off;
+
 % --- Add branch labels exactly as in the figure ---
 hold on;
 

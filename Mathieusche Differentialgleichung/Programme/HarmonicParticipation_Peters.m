@@ -18,8 +18,8 @@ useK = strcmp(K,'BlackLines'); % Flag: true if BlackLines is selected
 % -----------------------------------------------------------------------
 % --- Parameters and Initialization ---
 % -----------------------------------------------------------------------
-w_sq = 0.3^2;    % Natural frequency squared (w=0.7 to match figure 7)
-w = sqrt(w_sq);  % Natural frequency w = 0.7
+w_sq = 0.3^2;    % Natural frequency squared (w=0.7/0.3 to match figure 7)
+w = sqrt(w_sq);  % Natural frequency w = 0.7/0.3
 Omega = 1;       % Fundamental angular frequency (rad per unit time)
 T = 2*pi / Omega;  % Period of the parametric coefficient (T = 2*pi)
 
@@ -133,18 +133,19 @@ for i = 1:length(unique_m)
     end
 
     % --- COLOR/BLACK SELECTION ---
+   line_style = '-'; % Always use solid line for continuity
     if useK % BlackLines
-        plot_style = 'k-';
         line_color = 'k';
     else % ColoredLines
-        plot_style = '-';
         line_color = colors(i,:);
     end
 
-    plot(eps_nan, phi_nan, plot_style, 'Color', line_color, 'LineWidth', 1.5, 'DisplayName', ['m=', num2str(m_val)]);
-    legend_entries{end+1} = ['m=', num2str(m_val)];
+    % Plot using the separated line style and color properties
+    plot(eps_nan, phi_nan, line_style, ...
+         'Color', line_color, ...
+         'LineWidth', 1.5, ...
+         'DisplayName', ['m=', num2str(m_val)]); % DisplayName for legend
 end
-
 axis([0 5.0 0 1.0]);
 set(gca, 'YTick', 0:0.2:1);
 
