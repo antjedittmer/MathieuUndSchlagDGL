@@ -18,7 +18,7 @@ useK = strcmp(K,'BlackLines'); % Flag: true if BlackLines is selected
 % -----------------------------------------------------------------------
 % --- Parameters and Initialization ---
 % -----------------------------------------------------------------------
-w_sq = 0.3^2;    % Natural frequency squared (w=0.7/0.3 to match figure 7)
+w_sq = 0.7^2;    % Change this to 0.7^2 or 0.3^2
 w = sqrt(w_sq);  % Natural frequency w = 0.7/0.3
 Omega = 1;       % Fundamental angular frequency (rad per unit time)
 T = 2*pi / Omega;  % Period of the parametric coefficient (T = 2*pi)
@@ -103,7 +103,7 @@ end
 figure('Color','w','Units','pixels','Position',[200 200 900 400]);
 hold on;
 % --- UPDATE: Title reflects w ---
-title(['Modal Participation, $\omega = ', num2str(w, '%1.1f'), '$'], 'Interpreter', 'latex');
+title(['Harmonic participation, $\omega = ', num2str(w, '%1.1f'), '$'], 'Interpreter', 'latex');
 xlabel('$\epsilon$', 'FontSize', 14, 'Interpreter', 'latex');
 ylabel('Modal Participation', 'FontSize', 14, 'Interpreter', 'latex');
 grid on;
