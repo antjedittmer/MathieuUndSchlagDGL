@@ -11,9 +11,10 @@ fDirPeters = fullfile(fDir,'figureFolderPeters');
 if ~isdir(fDirPeters) %#ok<ISDIR>
     mkdir(fDirPeters)
 end
-% Switch for Color/Black-and-White 
-K = 'ColoredLines'; % Options: 'ColoredLines' or 'BlackLines'
-useK = strcmp(K,'BlackLines'); % Flag: true if BlackLines is selected
+
+K = 'ColoredLines';
+% K = 'BlackLines';
+useK = strcmp(K,'BlackLines');
 
 % -----------------------------------------------------------------------
 % --- Parameters and Initialization ---
