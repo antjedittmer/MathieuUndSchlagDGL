@@ -1,4 +1,4 @@
-% Damped Flapping Frequency Plot (Peters' full flapping coefficients)
+ % Damped Flapping Frequency Plot (Peters' full flapping coefficients)
 %   C(t) = gamma/8 * (1 + 4*mu/3 * sin(t))
 %   K(t) = p^2 + gamma/8 * (4*mu/3 * cos(t) + mu^2 * sin(2*t))
 clear; clc; close all;
