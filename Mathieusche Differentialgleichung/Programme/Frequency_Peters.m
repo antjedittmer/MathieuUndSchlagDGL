@@ -74,12 +74,12 @@ for w = w_values
     % -----------------------------------------------------------------------
     % --- Floquet Exponent Calculation and Branch Separation ---
     % -----------------------------------------------------------------------
-    x0 = eye(2); % Intial state matrix for Phi(0) = I
+    x0 = eye(2); % Initial state matrix for Phi(0) = I
     for k = 1:length(eps_vals)
         epsilon = eps_vals(k);
 
         % The state matrix D(t) for the ODE (Eq. 1):
-        % ddot(x) + (w^2 + epsilon*sin(Omega*t)) * x = 0
+        % dot(x) + (w^2 + epsilon*sin(Omega*t)) * x = 0
         % State-space form (Eq. 2): d/dt{x} = [D(t)]{x}
         D_func = @(t) [0, 1; -(w_sq + epsilon*sin(t)), 0];
 
@@ -132,7 +132,7 @@ for w = w_values
     color_map = lines(length(m_range)); % Color map for distinct lines
 
     % Title Update: Includes ODE, w, and Omega definition
-    ode_str = '$\ddot{x} + (w^2 + \epsilon\sin(\Omega t)) x = 0$';
+    ode_str = '$\dot{x} + (w^2 + \epsilon\sin(\Omega t)) x = 0$';
     w_str = num2str(w, '%1.1f');
     new_title = ['Frequency vs. $\epsilon$, ', ode_str, ', $w = ', w_str, '$ ($\Omega = 2\pi$ rad/s)'];
     title(new_title, 'Interpreter', 'latex');
@@ -192,7 +192,7 @@ for w = w_values
             h_line = plot(data(:, 1), data(:, 2), '.', 'Color', current_color, 'MarkerSize', 8, 'DisplayName', freq_str);
         end
 
-        % --- End-of-Curve Labeling (FIXED: Larger space and robustness) ---
+        % --- End-of-Curve Labeling (Larger space and robustness) ---
         if ~isempty(data)
             % Use a larger offset (0.15) for better spacing from the line/axis
             x_label_pos = data(end, 1) + 0.15;
