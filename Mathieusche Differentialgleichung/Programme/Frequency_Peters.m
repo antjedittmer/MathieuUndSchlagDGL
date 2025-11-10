@@ -87,32 +87,41 @@ for w = w_values
         [~, Phi_t] = ode45(@(t, x) reshape(D_func(t) * reshape(x, 2, 2), 4, 1), [0, T], reshape(x0, 4, 1));
         Phi_T = reshape(Phi_t(end, :), 2, 2); % Monodromy Matrix at Phi(T)
 
-        % Calculate Floquet Exponents: eta = log(Lambda) / T, see Eq. 8 
+        % Calculate Floquet Exponents: eta = log(Lambda) / T, see Eq. 8
         % [Phi(t)]=[A(t)][−exp(eta_j t)−][A(0)]^−1
         % [A(0)]^−1[Phi(T)][A(0)]=[−Lambda_j−]=[−exp(eta_j T)−]
         Lambda = eig(Phi_T);
         % Characteristic Exponent (Eq. 9)
         eta = log(Lambda) / T;
-
-        % Extract the Imaginary Part (normalized frequency, mu*Omega = Im(eta))
-        % omega/Omega = Im(eta)/Omega (where Omega=1, so omega = Im(eta))
-        normalized_omega = imag(eta) / Omega;
-
-        % --- Separate and Store Branches (m) ---
-        for r = 1:length(normalized_omega)
-            freq_r = normalized_omega(r);
+        if diff(real(eta)) > eps  
+            [~,idxEig] = sort(real(eta));
+        else
+              [~,idxEig] = sort(imag(eta));
+        end
+            % Extract the Imaginary Part (normalized frequency, mu*Omega = Im(eta))
+            % omega/Omega = Im(eta)/Omega (where Omega=1, so omega = Im(eta))
+            normalized_omega = imag(eta) / Omega;
+            % normalized_omega_sort = sort(normalized_omega);
+            normalized_omega_sort = normalized_omega;%(idxEig);
+            % --- Separate and Store Branches (m) ---
+            % for r = 1:length(normalized_omega)
+            freq_r = normalized_omega_sort(1); %This will select the positive imaginary part
 
             % 1. Find the basis frequency (principal value in the range [-0.5, 0.5])
             % This step effectively extracts the fractional part of the frequency,
             % which corresponds to the base frequency component (omega0/Omega) (Eq. 10).
-            basis_freq_r = mod(freq_r + 0.5, 1) - 0.5;
+            basis_freq_r =freq_r;% mod(freq_r + 0.5, 1) - 0.5;
 
             % 2. Map this base frequency to all possible branches 'm'
             % The true frequency can be shifted by any integer multiple 'm' of Omega.
             % Freq_m = basis_freq_r + m
             for m = m_range
-                branch_freq = basis_freq_r + m;
-
+                % branch_freq = basis_freq_r + m;
+                if m==0
+                    branch_freq = basis_freq_r;
+                else
+                    branch_freq = abs(m) *Omega + sign(m) *basis_freq_r;
+                end
                 % Determine the valid field name
                 if m < 0
                     field_name = ['m_neg_', num2str(abs(m))];
@@ -123,166 +132,166 @@ for w = w_values
                 % Store [epsilon, frequency] for this specific branch
                 results_by_branch.(field_name) = [results_by_branch.(field_name); epsilon, branch_freq];
             end
-        end
-    end
-
-    % -----------------------------------------------------------------------
-    % --- Plotting ---
-    % -----------------------------------------------------------------------
-    figure;
-    hold on;
-    color_map = lines(length(m_range)); % Color map for distinct lines
-
-    % Title Update: Includes ODE, w, and Omega definition
-    ode_str = '$\dot{x} + (w^2 + \epsilon\sin(\Omega t)) x = 0$';
-    w_str = num2str(w, '%1.1f');
-    new_title = ['Frequency vs. $\epsilon$, ', ode_str, ', $w = ', w_str, '$ ($\Omega = 2\pi$ rad/s)'];
-    title(new_title, 'Interpreter', 'latex');
-    xlabel('$\epsilon$', 'FontSize', 14, 'Interpreter', 'latex');
-    ylabel('Frequency ($\omega/\Omega$)', 'FontSize', 14, 'Interpreter', 'latex');
-
-    idx = 1;
-    for m = m_range
-        % Determine field name
-        if m < 0
-            field_name = ['m_neg_', num2str(abs(m))];
-        else
-            field_name = ['m_', num2str(m)];
+            % end
         end
 
-        % --- Legend Calculation: Peters' Frequency Convention (FIXED \omega) ---
-        if m >= 0
-            % omega/Omega approx omega0/Omega + m
-            freq_normalized = omega0/Omega + m;
-            % Use \\omega to represent \omega to the LaTeX interpreter
-            freq_str = sprintf('$m=%+d \\rightarrow \\omega/\\Omega \\approx %.1f$', m, freq_normalized); % Line 157
-        elseif m < 0
-            % omega/Omega approx |m| - omega0/Omega
-            m_abs = abs(m);
-            freq_normalized = m_abs - omega0/Omega;
-            %  Use \\omega to represent \omega to the LaTeX interpreter
-            freq_str = sprintf('$m=%+d \\rightarrow \\omega/\\Omega \\approx %.1f$', m, freq_normalized); % Line 162
-        end
+        % -----------------------------------------------------------------------
+        % --- Plotting ---
+        % -----------------------------------------------------------------------
+        figure;
+        hold on;
+        color_map = lines(length(m_range)); % Color map for distinct lines
 
-        % Get data for plotting
-        data = results_by_branch.(field_name);
+        % Title Update: Includes ODE, w, and Omega definition
+        ode_str = '$\dot{x} + (w^2 + \epsilon\sin(\Omega t)) x = 0$';
+        w_str = num2str(w, '%1.1f');
+        new_title = ['Frequency vs. $\epsilon$, ', ode_str, ', $w = ', w_str, '$ ($\Omega = 2\pi$ rad/s)'];
+        title(new_title, 'Interpreter', 'latex');
+        xlabel('$\epsilon$', 'FontSize', 14, 'Interpreter', 'latex');
+        ylabel('Frequency ($\omega/\Omega$)', 'FontSize', 14, 'Interpreter', 'latex');
 
-        % The initial color based on sequential index 'idx'
-        current_color = color_map(idx, :);
+        idx = 1;
+        for m = m_range
+            % Determine field name
+            if m < 0
+                field_name = ['m_neg_', num2str(abs(m))];
+            else
+                field_name = ['m_', num2str(m)];
+            end
 
-        % --- Conditional Color Swap for w=0.7 and w=0.3 (FIXED) ---
-        if (abs(w - 0.7) < 0.001 || abs(w - 0.3) < 0.001)
-            m_abs = abs(m);
-            if m_abs >= 1 && m_abs <= 4
-                % Find the index of the symmetric branch (-m or +m)
-                sym_m_idx_logical = (m_range == -m);
-                sym_m_idx_val = find(sym_m_idx_logical);
+            % --- Legend Calculation: Peters' Frequency Convention (FIXED \omega) ---
+            if m >= 0
+                % omega/Omega approx omega0/Omega + m
+                freq_normalized = omega0/Omega + m;
+                % Use \\omega to represent \omega to the LaTeX interpreter
+                freq_str = sprintf('$m=%+d \\rightarrow \\omega/\\Omega \\approx %.1f$', m, freq_normalized); % Line 157
+            elseif m < 0
+                % omega/Omega approx |m| - omega0/Omega
+                m_abs = abs(m);
+                freq_normalized = m_abs - omega0/Omega;
+                %  Use \\omega to represent \omega to the LaTeX interpreter
+                freq_str = sprintf('$m=%+d \\rightarrow \\omega/\\Omega \\approx %.1f$', m, freq_normalized); % Line 162
+            end
 
-                if ~isempty(sym_m_idx_val)
-                    % Swap the color with the symmetric branch's color map index
-                    current_color = color_map(sym_m_idx_val, :);
+            % Get data for plotting
+            data = results_by_branch.(field_name);
+
+            % The initial color based on sequential index 'idx'
+            current_color = color_map(idx, :);
+
+            % --- Conditional Color Swap for w=0.7 and w=0.3 (FIXED) ---
+            if (abs(w - 0.7) < 0.001 || abs(w - 0.3) < 0.001)
+                m_abs = abs(m);
+                if m_abs >= 1 && m_abs <= 4
+                    % Find the index of the symmetric branch (-m or +m)
+                    sym_m_idx_logical = (m_range == -m);
+                    sym_m_idx_val = find(sym_m_idx_logical);
+
+                    if ~isempty(sym_m_idx_val)
+                        % Swap the color with the symmetric branch's color map index
+                        current_color = color_map(sym_m_idx_val, :);
+                    end
                 end
             end
+
+            % Plotting using dots/scatters to form the continuous curves
+            if useK == 1
+                h_line = plot(data(:, 1), data(:, 2), '.', 'Color','k', 'MarkerSize', 8, 'DisplayName', freq_str);
+            else
+                % FIX: Pass the calculated 'current_color' to the plot function.
+                % This ensures both the line and the legend swatch use the swapped color.
+                h_line = plot(data(:, 1), data(:, 2), '.', 'Color', current_color, 'MarkerSize', 8, 'DisplayName', freq_str);
+            end
+
+            % --- End-of-Curve Labeling (Larger space and robustness) ---
+            if ~isempty(data)
+                % Use a larger offset (0.15) for better spacing from the line/axis
+                x_label_pos = data(end, 1) + 0.15;
+                y_label_pos = data(end, 2);
+                label_text = sprintf('[%+d]', m); % Use m as the primary branch label
+
+                text(x_label_pos, y_label_pos, label_text, ...
+                    'Color', current_color, ...
+                    'HorizontalAlignment', 'left', ...
+                    'VerticalAlignment', 'middle', ...
+                    'FontSize', 10, 'Interpreter', 'latex');
+            end
+
+            idx = idx + 1;
         end
 
-        % Plotting using dots/scatters to form the continuous curves
-        if useK == 1
-            h_line = plot(data(:, 1), data(:, 2), '.', 'Color','k', 'MarkerSize', 8, 'DisplayName', freq_str);
-        else
-            % FIX: Pass the calculated 'current_color' to the plot function.
-            % This ensures both the line and the legend swatch use the swapped color.
-            h_line = plot(data(:, 1), data(:, 2), '.', 'Color', current_color, 'MarkerSize', 8, 'DisplayName', freq_str);
+        % Set Axis limits
+        % axis([0 eps_end 0 4.5]);
+        grid on;
+        set(gca, 'TickLabelInterpreter', 'latex');
+
+        % Add Legend if colors are used
+        if ~useK
+            legend('Location', 'northeastoutside', 'Interpreter', 'latex');
         end
 
-        % --- End-of-Curve Labeling (Larger space and robustness) ---
-        if ~isempty(data)
-            % Use a larger offset (0.15) for better spacing from the line/axis
-            x_label_pos = data(end, 1) + 0.15;
-            y_label_pos = data(end, 2);
-            label_text = sprintf('[%+d]', m); % Use m as the primary branch label
+        % -----------------------------------------------------------------------
+        % --- Branch Label Annotations ---
+        % -----------------------------------------------------------------------
+        % These labels mark the primary frequency branches at different regions
+        % of the stability chart.
+        hold on;
+        % Left-side labels (ε -> 0)
+        text(0.05, 0.05, '[+0]', 'FontSize', 10, 'Interpreter', 'latex'); % Near w/Omega = 0.7 - 0.5 = 0.2 (using basis freq)
+        text(0.05, 0.55, '[-1]', 'FontSize', 10, 'Interpreter', 'latex'); % Near 1 - 0.3 = 0.7
+        text(0.05, 1.05, '[+1]', 'FontSize', 10, 'Interpreter', 'latex'); % Near 1 + 0.3 = 1.3
+        text(0.05, 1.55, '[-2]', 'FontSize', 10, 'Interpreter', 'latex'); % Near 2 - 0.3 = 1.7
+        text(0.05, 2.05, '[+2]', 'FontSize', 10, 'Interpreter', 'latex'); % Near 2 + 0.3 = 2.3
+        text(0.05, 2.55, '[-3]', 'FontSize', 10, 'Interpreter', 'latex'); % Near 3 - 0.3 = 2.7
+        text(0.05, 3.05, '[+3]', 'FontSize', 10, 'Interpreter', 'latex'); % Near 3 + 0.3 = 3.3
+        text(0.05, 3.55, '[-4]', 'FontSize', 10, 'Interpreter', 'latex'); % Near 4 - 0.3 = 3.7
 
-            text(x_label_pos, y_label_pos, label_text, ...
-                'Color', current_color, ...
-                'HorizontalAlignment', 'left', ...
-                'VerticalAlignment', 'middle', ...
-                'FontSize', 10, 'Interpreter', 'latex');
+        % Middle labels (Near the primary instability boundaries)
+        text(1.2, 0.35, '[-1/+0]', 'FontSize', 10, 'Interpreter', 'latex');
+        text(1.2, 1.35, '[-2/+1]', 'FontSize', 10, 'Interpreter', 'latex');
+        text(1.2, 2.35, '[-3/+2]', 'FontSize', 10, 'Interpreter', 'latex');
+        text(1.2, 3.35, '[-4/+3]', 'FontSize', 10, 'Interpreter', 'latex');
+
+        % --- RIGHT-SIDE LABELS (Secondary Instability Boundaries) ---
+        % The labels are positioned based on the value of 'w' used in the analysis.
+        if abs(w - 0.3) < 0.001
+            % Labels for w = 0.3
+            text(4.0, 0.20, '[+0]', 'FontSize', 10, 'Interpreter', 'latex');
+            text(4.0, 1.20, '[-1/+1]', 'FontSize', 10, 'Interpreter', 'latex');
+            text(4.0, 2.20, '[-2/+2]', 'FontSize', 10, 'Interpreter', 'latex');
+            text(4.0, 3.20, '[-3/+3]', 'FontSize', 10, 'Interpreter', 'latex');
+            text(4.0, 4.20, '[-4/+4]', 'FontSize', 10, 'Interpreter', 'latex');
+        elseif abs(w - 0.7) < 0.001
+            % Labels for w = 0.7
+            text(3.0, 0.20, '[+0]', 'FontSize', 10, 'Interpreter', 'latex');
+            text(3.0, 1.20, '[-1/+1]', 'FontSize', 10, 'Interpreter', 'latex');
+            text(3.0, 2.20, '[-2/+2]', 'FontSize', 10, 'Interpreter', 'latex');
+            text(3.0, 3.20, '[-3/+3]', 'FontSize', 10, 'Interpreter', 'latex');
+            text(3.0, 4.20, '[-4/+4]', 'FontSize', 10, 'Interpreter', 'latex');
         end
-
-        idx = idx + 1;
+        % Print to Png file
+        print(pngfile, '-dpng')
     end
-
-    % Set Axis limits
-    axis([0 eps_end 0 4.5]);
-    grid on;
-    set(gca, 'TickLabelInterpreter', 'latex');
-
-    % Add Legend if colors are used
-    if ~useK
-        legend('Location', 'northeastoutside', 'Interpreter', 'latex');
-    end
-
     % -----------------------------------------------------------------------
-    % --- Branch Label Annotations ---
+    % --- LOCAL FUNCTION DEFINITION ---
     % -----------------------------------------------------------------------
-    % These labels mark the primary frequency branches at different regions
-    % of the stability chart.
-    hold on;
-    % Left-side labels (ε -> 0)
-    text(0.05, 0.05, '[+0]', 'FontSize', 10, 'Interpreter', 'latex'); % Near w/Omega = 0.7 - 0.5 = 0.2 (using basis freq)
-    text(0.05, 0.55, '[-1]', 'FontSize', 10, 'Interpreter', 'latex'); % Near 1 - 0.3 = 0.7
-    text(0.05, 1.05, '[+1]', 'FontSize', 10, 'Interpreter', 'latex'); % Near 1 + 0.3 = 1.3
-    text(0.05, 1.55, '[-2]', 'FontSize', 10, 'Interpreter', 'latex'); % Near 2 - 0.3 = 1.7
-    text(0.05, 2.05, '[+2]', 'FontSize', 10, 'Interpreter', 'latex'); % Near 2 + 0.3 = 2.3
-    text(0.05, 2.55, '[-3]', 'FontSize', 10, 'Interpreter', 'latex'); % Near 3 - 0.3 = 2.7
-    text(0.05, 3.05, '[+3]', 'FontSize', 10, 'Interpreter', 'latex'); % Near 3 + 0.3 = 3.3
-    text(0.05, 3.55, '[-4]', 'FontSize', 10, 'Interpreter', 'latex'); % Near 4 - 0.3 = 3.7
+    % This function applies the color swap logic used in the main loop
+    % to the branch label annotations, ensuring color consistency.
+    function color_out = local_get_color(m_val, w, m_range, color_map, m_map)
+    idx_in = m_map(m_val);
+    color_out = color_map(idx_in, :); % Default color
 
-    % Middle labels (Near the primary instability boundaries)
-    text(1.2, 0.35, '[-1/+0]', 'FontSize', 10, 'Interpreter', 'latex');
-    text(1.2, 1.35, '[-2/+1]', 'FontSize', 10, 'Interpreter', 'latex');
-    text(1.2, 2.35, '[-3/+2]', 'FontSize', 10, 'Interpreter', 'latex');
-    text(1.2, 3.35, '[-4/+3]', 'FontSize', 10, 'Interpreter', 'latex');
+    % Apply the same swap logic as the main plotting loop
+    if (abs(w - 0.7) < 0.001 || abs(w - 0.3) < 0.001)
+        m_abs = abs(m_val);
+        if m_abs >= 1 && m_abs <= 4
+            sym_m_idx_logical = (m_range == -m_val);
+            sym_m_idx_val = find(sym_m_idx_logical);
 
-    % --- RIGHT-SIDE LABELS (Secondary Instability Boundaries) ---
-    % The labels are positioned based on the value of 'w' used in the analysis.
-    if abs(w - 0.3) < 0.001
-        % Labels for w = 0.3
-        text(4.0, 0.20, '[+0]', 'FontSize', 10, 'Interpreter', 'latex');
-        text(4.0, 1.20, '[-1/+1]', 'FontSize', 10, 'Interpreter', 'latex');
-        text(4.0, 2.20, '[-2/+2]', 'FontSize', 10, 'Interpreter', 'latex');
-        text(4.0, 3.20, '[-3/+3]', 'FontSize', 10, 'Interpreter', 'latex');
-        text(4.0, 4.20, '[-4/+4]', 'FontSize', 10, 'Interpreter', 'latex');
-    elseif abs(w - 0.7) < 0.001
-        % Labels for w = 0.7
-        text(3.0, 0.20, '[+0]', 'FontSize', 10, 'Interpreter', 'latex');
-        text(3.0, 1.20, '[-1/+1]', 'FontSize', 10, 'Interpreter', 'latex');
-        text(3.0, 2.20, '[-2/+2]', 'FontSize', 10, 'Interpreter', 'latex');
-        text(3.0, 3.20, '[-3/+3]', 'FontSize', 10, 'Interpreter', 'latex');
-        text(3.0, 4.20, '[-4/+4]', 'FontSize', 10, 'Interpreter', 'latex');
-    end
-    % Print to Png file
-    print(pngfile, '-dpng')
-end
-% -----------------------------------------------------------------------
-% --- LOCAL FUNCTION DEFINITION ---
-% -----------------------------------------------------------------------
-% This function applies the color swap logic used in the main loop
-% to the branch label annotations, ensuring color consistency.
-function color_out = local_get_color(m_val, w, m_range, color_map, m_map)
-idx_in = m_map(m_val);
-color_out = color_map(idx_in, :); % Default color
-
-% Apply the same swap logic as the main plotting loop
-if (abs(w - 0.7) < 0.001 || abs(w - 0.3) < 0.001)
-    m_abs = abs(m_val);
-    if m_abs >= 1 && m_abs <= 4
-        sym_m_idx_logical = (m_range == -m_val);
-        sym_m_idx_val = find(sym_m_idx_logical);
-
-        if ~isempty(sym_m_idx_val)
-            color_out = color_map(sym_m_idx_val, :);
+            if ~isempty(sym_m_idx_val)
+                color_out = color_map(sym_m_idx_val, :);
+            end
         end
     end
-end
-end
-% -----------------------------------------------------------------------
+    end
+    % -----------------------------------------------------------------------
