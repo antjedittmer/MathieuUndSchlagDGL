@@ -80,14 +80,16 @@ for w = w_values
 
         % The state matrix D(t) for the ODE (Eq. 1):
         % dot(x) + (w^2 + epsilon*sin(Omega*t)) * x = 0
-        % State-space form (Eq. 2): d/dt{x} = [D(t)]{x}
+        % State-space form (Eq. 2): d{x}/dt = [D(t)]{x}
         D_func = @(t) [0, 1; -(w_sq + epsilon*sin(t)), 0];
 
-        % Solve for the Transition Matrix Phi(T)
+        % Solve for the Transition Matrix Phi(t): {x(t)}=[Phi(t)]{x(0)} (Eq. 7)
         [~, Phi_t] = ode45(@(t, x) reshape(D_func(t) * reshape(x, 2, 2), 4, 1), [0, T], reshape(x0, 4, 1));
-        Phi_T = reshape(Phi_t(end, :), 2, 2); % Monodromy Matrix at T
+        Phi_T = reshape(Phi_t(end, :), 2, 2); % Monodromy Matrix at Phi(T)
 
-        % Calculate Floquet Exponents: eta = log(Lambda) / T
+        % Calculate Floquet Exponents: eta = log(Lambda) / T, see Eq. 8 
+        % [Phi(t)]=[A(t)][−exp(eta_j t)−][A(0)]^−1
+        % [A(0)]^−1[Phi(T)][A(0)]=[−Lambda_j−]=[−exp(eta_j T)−]
         Lambda = eig(Phi_T);
         % Characteristic Exponent (Eq. 9)
         eta = log(Lambda) / T;
