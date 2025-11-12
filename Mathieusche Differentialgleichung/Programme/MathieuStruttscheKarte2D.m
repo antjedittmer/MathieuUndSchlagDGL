@@ -2,7 +2,7 @@
 % Berechnung der Struttschen Karten in den Grenzen von nu_02 und nu_C2
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 clc; clear; close all;
-loadMat = 0;  % mat-file laden, wenn Ergebnisse mit gleichem D vorhanden
+loadMat = 1;  % mat-file laden, wenn Ergebnisse mit gleichem D vorhanden
 SW = 0.1; %stepwidth
 unt0 = 0;
 untC = 0;
