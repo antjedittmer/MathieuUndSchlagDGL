@@ -7,6 +7,7 @@
 % JOURNAL OF THE AMERICAN HELICOPTER SOCIETY 56, 032001 (2011)
 % -------------------------------------------------------------------------
 clear; clc; close all;
+
 % --- Setup for Figure Saving ---
 fDir = 'figureFolder'; % Folder for figures
 if ~isdir(fDir) %#ok<ISDIR>
@@ -20,6 +21,7 @@ end
 K = 'ColoredLines';
 % K = 'BlackLines';
 useK = strcmp(K,'BlackLines');
+
 % -----------------------------------------------------------------------
 % --- Parameters and Initialization ---
 % -----------------------------------------------------------------------

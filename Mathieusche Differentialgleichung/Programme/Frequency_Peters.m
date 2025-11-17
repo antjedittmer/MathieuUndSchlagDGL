@@ -1,3 +1,4 @@
+% function Frequency_Peters
 % Floquet Frequency Plot for Mathieu's Equation (Figure 2 Appearance)
 % Separates branches according to the integer multiple 'm' used.
 %
@@ -6,6 +7,7 @@
 % "Interpretation of Floquet Eigenvalues and Eigenvectors for Periodic Systems"
 % JOURNAL OF THE AMERICAN HELICOPTER SOCIETY 56, 032001 (2011)
 clear; clc; close all;
+
 % --- Setup for Figure Saving ---
 fDir = 'figureFolder'; % Folder for figures
 if ~isdir(fDir) %#ok<ISDIR>
@@ -19,6 +21,7 @@ end
 K = 'ColoredLines';
 % K = 'BlackLines';
 useK = strcmp(K,'BlackLines');
+
 % -----------------------------------------------------------------------
 % --- Parameters and Initialization ---
 % -----------------------------------------------------------------------
@@ -53,6 +56,7 @@ for w = w_values
     end
     eps_vals = linspace(0, eps_end, eps_no);
     m_range = (-4:4); % Integer multiple range for plotting branches (m*Omega)
+   
     % Structure to hold results, organized by branch 'm' (e.g., m_0, m_neg_1)
     results_by_branch = struct();
     for m = m_range
@@ -64,6 +68,7 @@ for w = w_values
         end
         results_by_branch.(field_name) = []; % Initialize with empty array
     end
+
     % -----------------------------------------------------------------------
     % --- Floquet Exponent Calculation and Branch Separation ---
     % -----------------------------------------------------------------------
@@ -77,6 +82,7 @@ for w = w_values
         % Solve for the Transition Matrix Phi(t): {x(t)}=[Phi(t)]{x(0)} (Eq. 7)
         [~, Phi_t] = ode45(@(t, x) reshape(D_func(t) * reshape(x, 2, 2), 4, 1), [0, T], reshape(x0, 4, 1));
         Phi_T = reshape(Phi_t(end, :), 2, 2); % Monodromy Matrix at Phi(T)
+       
         % Calculate Floquet Exponents: eta = log(Lambda) / T, see Eq. 8
         % [Phi(t)]=[A(t)][−exp(eta_j t)−][A(0)]^−1
         % [A(0)]^−1[Phi(T)][A(0)]=[−Lambda_j−]=[−exp(eta_j T)−]
@@ -86,17 +92,12 @@ for w = w_values
         % The **real part** of eta (Re(eta)) determines stability.
         % If Re(eta) > 0, the system is unstable (exponential growth).
         % The **imaginary part** of eta (Im(eta)) determines the frequency (mu).
-        if diff(real(eta)) > eps
-            [~,idxEig] = sort(real(eta));
-        else
-            [~,idxEig] = sort(imag(eta));
-        end
+     
         % Extract the Imaginary Part (normalized frequency, mu*Omega = Im(eta))
         % omega/Omega = Im(eta)/Omega (where Omega=1, so omega = Im(eta))
         normalized_omega = imag(eta) / Omega;
 
         % --- Separate and Store Branches (m) ---
-
         % 1. Find the basis frequency (principal value)
         % This step effectively extracts the fractional part of the frequency,
         % which corresponds to the base frequency component (omega0/Omega) (Eq. 10).
@@ -104,7 +105,7 @@ for w = w_values
         % 2. Map this base frequency to all possible branches 'm'
         % The physical frequency omega is defined by omega/Omega = m + mu.
         % Here, 'm' represents the **integer multiple** of the excitation frequency Omega.
-        %
+
         % - **Positive m (m>0):** Frequencies omega approx m*Omega + omega_0. These branches generally increase with m.
         % - **Negative m (m<0):** Frequencies omega approx |m|*Omega - omega_0. These branches approach |m|*Omega from below (or above, depending on convention).
 
@@ -128,12 +129,14 @@ for w = w_values
             results_by_branch.(field_name) = [results_by_branch.(field_name); epsilon, branch_freq];
         end
     end
+    
     % -----------------------------------------------------------------------
     % --- Plotting ---
     % -----------------------------------------------------------------------
     figure;
     hold on;
     color_map = lines;
+    color_map = [color_map(1:7,:);0*ones(1,3);0.5*ones(1,3)];
     % Title Update: Includes ODE, w, and Omega definition
     ode_str = '$\dot{x} + (w^2 + \epsilon\sin(\Omega t)) x = 0$';
     w_str = num2str(w, '%1.1f');
@@ -168,11 +171,11 @@ for w = w_values
         current_color = color_map(idx, :);
         % Plotting using dots/scatters to form the continuous curves
         if useK == 1
-            h_line = plot(data(:, 1), data(:, 2), '.', 'Color','k', 'MarkerSize', 8, 'DisplayName', freq_str);
+            plot(data(:, 1), data(:, 2), '.', 'Color','k', 'MarkerSize', 8, 'DisplayName', freq_str);
         else
             % Pass the calculated 'current_color' to the plot function.
             % This ensures both the line and the legend swatch use the swapped color.
-            h_line = plot(data(:, 1), data(:, 2), '.', 'Color', current_color, 'MarkerSize', 8, 'DisplayName', freq_str);
+             plot(data(:, 1), data(:, 2), '.', 'Color', current_color, 'MarkerSize', 8, 'DisplayName', freq_str);
         end
 
         idx = idx + 1;
@@ -184,6 +187,7 @@ for w = w_values
     if ~useK
         legend('Location', 'northeastoutside', 'Interpreter', 'latex');
     end
+   
     % -----------------------------------------------------------------------
     % --- Branch Label Annotations ---
     % -----------------------------------------------------------------------
