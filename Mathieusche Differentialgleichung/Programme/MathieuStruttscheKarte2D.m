@@ -1,8 +1,8 @@
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Berechnung der Struttschen Karten in den Grenzen von nu_02 und nu_C2
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 clc; clear; close all;
-loadMat = 1;  % mat-file laden, wenn Ergebnisse mit gleichem D vorhanden
+loadMat = 0;  % mat-file laden, wenn Ergebnisse mit gleichem D vorhanden
 SW = 0.1; %stepwidth
 unt0 = 0;
 untC = 0;
@@ -47,7 +47,7 @@ for dIdx = 1: length(DVec)
     lenNu = lenNu02 * lenNuC2; % Anzahl Kombination Nu_C2 Werte
     lenNuDiag = min(lenNu02,lenNuC2); % Anzahl Werte nu_02 == nu_C2
     Monodromie = zeros(Nz);
-    CharEx = zeros(lenNuDiag,Nz*4+2); % nu, nc, Real1,2, Imag12, Imag1,2, Pole
+    CharEx = zeros(lenNuDiag,Nz*4+4); % nu, nc, Real1,2, Imag12, Imag1,2, Pole
     nAddVector = nan(lenNuDiag,1);
     plotwertstabil = zeros(lenNu,3);
     %nuCSwitchVec = [0.1,1,1.5^2,2^2,2.5^2] - 0.1;
@@ -99,7 +99,7 @@ for dIdx = 1: length(DVec)
                     end
                     nAdd = n*2*pi/T; %
                     ImagEigSortN = [Eig.ImagCorrectedNeg, Eig.ImagCorrected] + [-nAdd,nAdd];
-                    CharEx(oidx,:) = [nu_02, nu_C2, Eig.Real', min(Eig.ImagSort), max(Eig.ImagSort), ImagEigSortN, eP'];
+                    CharEx(oidx,:) = [nu_02, nu_C2, Eig.Real', min(Eig.ImagSort), max(Eig.ImagSort), ImagEigSortN, eP', Eig.Imag'];
                     nAddVector(oidx) = nAdd;
                     oidx = oidx + 1;
                 end

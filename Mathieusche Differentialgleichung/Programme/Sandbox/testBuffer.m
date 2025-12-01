@@ -1,7 +1,7 @@
 clc; clear; close all;
 
 %% Lade die Daten und erstelle den Table
-matFolder = fullfile(pwd,'dataFolder'); % mat Datei im dataFolder
+matFolder = fullfile(fileparts(pwd),'dataFolder'); % mat Datei im dataFolder
 % matFolder = fullfile(pwd);% mat Datei im gleichen Ordner
 matName = fullfile(matFolder, 'STRUTTscheKarte_D1dot5e-01_SW1dot0e-01_unt0.mat '); 
 

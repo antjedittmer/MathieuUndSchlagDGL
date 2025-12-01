@@ -29,7 +29,7 @@ Omega = 1;       % Fundamental angular frequency (Normalized: Omega = 1)
 T = 2*pi / Omega;  % Period of the parametric coefficient (T = 2*pi)
 
 % Outer loop for different unperturbed frequencies (w)
-w_values = [0.3, 0.5, 0.7];
+w_values =[0.3, 0.5, 0.7];
 for w = w_values
     w_sq = w^2;
 
