@@ -6,8 +6,8 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 clc; clear; close all;
 % --- Setup and Parameters ---
-loadMat = 1; % Load mat-file if results with the same D are already available
-SW = 0.1;    % Step width for nu_0^2 and nu_C^2 sweep
+loadMat = 0; % Load mat-file if results with the same D are already available
+SW = 0.5;    % Step width for nu_0^2 and nu_C^2 sweep
 unt0 = 0;    % Lower bound for nu_0^2 (x-axis)
 untC = 0;    % Lower bound for nu_C^2 (y-axis)
 ob0 = 9;     % Upper bound for nu_0^2
@@ -17,11 +17,11 @@ fDir = 'figureFolder_Arnold_Classic_Symmetric';
 if ~isfolder(fDir)
     mkdir(fDir)
 end
-dDir = 'dataFolder_Arnold_Classic_Symmetric';
+dDir = 'dataFolder_Arnold_Classic_Symmetric_test';
 if ~isfolder(dDir)
     mkdir(dDir)
 end
-excelDir = 'dataFolder_Arnold_Excel_Classic_Symmetric';
+excelDir = 'dataFolder_Arnold_Excel_Classic_Symmetric_test';
 if ~isfolder(excelDir)
     mkdir(excelDir);
 end
@@ -38,7 +38,7 @@ for dIdx = 1: length(DVec)
     Diagonal = diag(ones(Nz,1));
     
     % MATLAB mat-file Name for all data
-    matName = [strrep(sprintf('STRUTTscheKarte_Arnold_D%2.1e_SW%2.1e',D,SW),'.','dot'),...
+    matName = [strrep(sprintf('STRUTTscheKarte_Arnoldnew_D%2.1e_SW%2.1e',D,SW),'.','dot'),...
         '.mat'];
     fileName = fullfile(dDir,matName);
     
@@ -83,6 +83,7 @@ for dIdx = 1: length(DVec)
                 
                 % --- Characteristic Exponents (Only Diagonal nu_0^2 = nu_C^2) ---
                 if abs(nu_C2 - nu_02) < SW/2 
+                     omega0 = sqrt(nu_02); % Undisturbed natural frequency
                     
                     % 1. Arnold Style: Use atan and the Real part log(|mu|)
                     Eig.Real = 1/T * log(abs(eP)); % sigma = Re(s)
@@ -95,15 +96,17 @@ for dIdx = 1: length(DVec)
                     
                     % 3. Arnold Style: Manual phase shift tracking (n-tracking)
                     % If the real parts become equal (resonance), increment n by 0.5.
-                    if abs(Eig.Real(1) - Eig.Real(2)) < 1e-6 && nu_02 > 0.05 
-                        n = n + 0.5;
-                    end
-                    nAdd = n*2*pi/T; % The phase shift term (m*2*pi/T)
-                    
+                   % if abs(Eig.Real(1) - Eig.Real(2)) < 1e-6 && nu_02 > 0.05 
+                    %    n = n + 0.5;
+                   % end
+                   % nAdd = n*2*pi/T; % The phase shift term (m*2*pi/T)
+                   Eig_Im_Raw = Eig.ImagSort(2);
+                   nAdd = petersPhysicalFrequency(Eig_Im_Raw, omega0, Omega);
+nAddVec(oidx) = nAdd;
                     % Combine smoothed Im(s) and phase shift (nAdd)
                     % Eig.ImagCorrected is typically the positive frequency.
-                    PhysFreq1 = Eig.ImagCorrected + nAdd; 
-                    PhysFreq2 = Eig.ImagCorrectedNeg + nAdd; 
+                    PhysFreq1 = Eig.ImagCorrected + nAdd/2; 
+                    PhysFreq2 = Eig.ImagCorrectedNeg - nAdd/2; 
 
                     % Sort by Real part (stability measure)
                     [Eig_Re_Sort, idx_sort] = sort(Eig.Real); 
@@ -267,4 +270,31 @@ function dxdpsi = MathieuDGL(psi, x, D, nu_02, nu_C2)
     phi_ddot = -2 * D * phi_dot - K_psi * phi;
     
     dxdpsi = [phi_dot; phi_ddot];
+end
+
+% 1. Peters-inspired Correction Function
+function nAdd = petersPhysicalFrequency(Eig_Im_Raw, omega0, Omega)
+% petersPhysicalFrequency: Selects the integer correction term k such that 
+% the frequency Im(s) + k*Omega is closest to the undisturbed natural frequency 
+% omega0 (Peters' physical frequency tracking logic).
+
+% Search range for k (Harmonics/Integers)
+k_range = 0:5; 
+% PhysFreq = zeros(size(Eig_Im_Raw));
+i = 1;
+%for i = 1:length(Eig_Im_Raw)
+    nu_imag_raw = Eig_Im_Raw(i);
+
+    % Test all k corrections: Test Frequencies = Im(s) + k*Omega
+    test_frequencies = nu_imag_raw + k_range * Omega;
+
+    % The target frequency is the undisturbed natural frequency: omega0
+    target_freq = omega0;
+
+    % Find the best k that brings the test frequency closest to the target frequency
+    [~, k_best_idx] = min(abs(test_frequencies - target_freq));
+
+    % PhysFreq(i) = test_frequencies(k_best_idx);
+nAdd = k_range(k_best_idx);
+% end
 end

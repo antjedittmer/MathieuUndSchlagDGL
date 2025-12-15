@@ -31,8 +31,8 @@ Omega = 1;           % Fundamental angular frequency (normalized)
 T     = 2*pi/Omega;  % Period of the parametric coefficient (T = 2*pi)
 
 % Outer loop for different unperturbed frequencies w
-w_values = [0.3, 0.5, 0.7];
-
+w_values = 0.3; [0.3, 0.5, 0.7];
+D = 0.15;
 for w = w_values
     w_sq = w^2;
 
@@ -83,7 +83,9 @@ for w = w_values
         epsilon = eps_vals(k);
 
         % State-space matrix D(t)
-        D_func = @(t) [0, 1; -(w_sq + epsilon*sin(Omega*t)), 0];
+        %D_func = @(t) [0, 1; -(w_sq + epsilon*sin(Omega*t)), 0];
+        D_func = @(t) [0, 1; -(epsilon + epsilon*sin(Omega*t)), -2*D];
+
 
         % Solve for Phi(T)
         [~, Phi_t] = ode45(@(t, x) reshape(D_func(t)*reshape(x,2,2),4,1), ...

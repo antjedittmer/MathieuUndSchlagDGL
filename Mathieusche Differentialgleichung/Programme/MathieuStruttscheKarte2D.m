@@ -12,12 +12,12 @@ fDir = 'figureFolder1'; % Ordner Abbildungen
 if ~isdir(fDir) %#ok<ISDIR>
     mkdir(fDir)
 end
-dDir = 'dataFolder'; % Ordner mat-files
-if ~isdir(dDir) %#ok<ISDIR>
+dDir = 'dataFolder_Arnold_Classic_Symmetric_test';
+if ~isfolder(dDir)
     mkdir(dDir)
 end
-excelDir = 'dataFolder1';
-if ~isdir(excelDir) %#ok<ISDIR>
+excelDir = 'dataFolder_Arnold_Excel_Classic_Symmetric_test';
+if ~isfolder(excelDir)
     mkdir(excelDir);
 end
 % Anzahl der Gleichungen des DGL-Systems
@@ -97,10 +97,10 @@ for dIdx = 1: length(DVec)
                         n =  n + 0.5;
                         cntN = cntN+1;
                     end
-                    nAdd = n*2*pi/T; %
-                    ImagEigSortN = [Eig.ImagCorrectedNeg, Eig.ImagCorrected] + [-nAdd,nAdd];
+                    
+                    ImagEigSortN = [Eig.ImagCorrectedNeg, Eig.ImagCorrected] + [-n,n];
                     CharEx(oidx,:) = [nu_02, nu_C2, Eig.Real', min(Eig.ImagSort), max(Eig.ImagSort), ImagEigSortN, eP', Eig.Imag'];
-                    nAddVector(oidx) = nAdd;
+                    nAddVector(oidx) = n;
                     oidx = oidx + 1;
                 end
                 %% 1=stabile Kombinationen von nu_02 und nu_C2 basierend auf den

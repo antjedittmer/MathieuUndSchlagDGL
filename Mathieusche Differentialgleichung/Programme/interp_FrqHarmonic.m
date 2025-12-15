@@ -331,7 +331,7 @@ for w = w_values
         [eps_m, sort_idx] = sort(eps_m);
         phi_m = phi_m(sort_idx);
         % interp1: map from eps_m (400) to eps_freq (150)
-        phi_mat(:,j) = interp1(eps_m, phi_m, eps_freq, 'linear', 'extrap');
+        phi_mat(:,j) = -interp1(eps_m, phi_m, eps_freq, 'linear', 'extrap');
     end
 
     % Element-wise multiply and sum across modes to get weighted frequency

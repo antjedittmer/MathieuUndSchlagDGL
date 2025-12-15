@@ -5,8 +5,8 @@ Omega = 1;          % Fundamental frequency used in paper
 T      = 2*pi;      % Period of the system (Omega = 1 -> T = 2*pi)
 
 % Define all (w, epsilon) combinations
-w_array       = [0.7, 0.7, 0.7, 0.7, 1.0, 1.0];
-epsilon_array = [0.0, 1.0, 2.0, 3.0, 0.0, 3.5];
+w_array       = 0:0.1:9; [0.7, 0.7, 0.7, 0.7, 1.0, 1.0];
+epsilon_array = w_array; %[0.0, 1.0, 2.0, 3.0, 0.0, 3.5];
 
 % Colors for each case
 case_colors = {'k', 'r', 'b', 'c', 'm', 'g'};
@@ -15,7 +15,7 @@ options = odeset('RelTol', 1e-12, 'AbsTol', 1e-12);
 
 for idx = 1:length(w_array)
     w       = w_array(idx);
-    epsilon = epsilon_array(idx);
+    epsilon = w ;epsilon_array(idx);
 
     % 1. Define Mathieu ODE: x'' + [w^2 + epsilon*sin(t)] x = 0
     mathieu_ode = @(t, y) [y(2); -(w^2 + epsilon * sin(Omega*t)) * y(1)];
