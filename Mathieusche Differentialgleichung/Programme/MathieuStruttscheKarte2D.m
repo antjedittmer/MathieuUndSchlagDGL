@@ -2,7 +2,7 @@
 % Berechnung der Struttschen Karten in den Grenzen von nu_02 und nu_C2
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 clc; clear; close all;
-loadMat = 0;  % mat-file laden, wenn Ergebnisse mit gleichem D vorhanden
+loadMat = 1;  % mat-file laden, wenn Ergebnisse mit gleichem D vorhanden
 SW = 0.1; %stepwidth
 unt0 = 0;
 untC = 0;
@@ -162,6 +162,7 @@ for dIdx = 1: length(DVec)
     grid on;
     try h(3) = nexttile([2 1]); catch, h(3) = subplot(11,1,[10,11]); end %nexttile([2 1]);
     plot(xachse,CharEx(:,7:8)); hold on;
+    % plot(xachse,CharExTable.nu_C2.^0.5) % For checking omega
     % plot(xachse,CharEx(:,5),'--', 'color',cl(1,:)) % Zum Debuggen
     % plot(xachse,CharEx(:,6),'--', 'color',cl(2,:))
     grid on;

@@ -31,7 +31,7 @@ Omega = 1;           % Fundamental angular frequency (normalized)
 T     = 2*pi/Omega;  % Period of the parametric coefficient (T = 2*pi)
 
 % Outer loop for different unperturbed frequencies w
-w_values = 0.3; [0.3, 0.5, 0.7];
+w_values =[0.3, 0.5, 0.7];
 D = 0.15;
 for w = w_values
     w_sq = w^2;
@@ -45,7 +45,7 @@ for w = w_values
     end
 
     %% ====================================================================
-    % PART 1: Floquet Frequency Plot (Figure 2 Appearance)
+    % PART 1: Floquet Frequency Plot
     %% ====================================================================
     pngname = strrep(sprintf('PetersFrequency%s_w%1.1f',K,w),'.','dot');
     pngfile = fullfile(fDirPeters,[pngname,'.png']);
