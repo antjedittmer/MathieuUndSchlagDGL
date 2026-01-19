@@ -1,3 +1,4 @@
+%% 
 %clear command window, clear workspace, close all figures
 clc ; clear variables ; close all;
 
