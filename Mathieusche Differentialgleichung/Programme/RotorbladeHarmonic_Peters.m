@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 % -------------------------------------------------------------------------
 % Exact Harmonic Participation: Rotor Blade Flapping
 % Replicating Figure 3 from Peters (JAHS 2011)
@@ -15,7 +14,7 @@ mu_vals = linspace(0.001, mu_end, N_mu);
 % Storage for curves
 % 1: [-1], 2: [0], 3: [-1/+0], 4: [-2/+1], 5: [-2/+2], 6: [-3/+2], 7: [-3/+3]
 curve_data = zeros(7, N_mu);
-=======
+
 clear; clc; close all;
 
 % --- Parameters from Peters (2011) ---
@@ -26,12 +25,9 @@ mu_vals = linspace(0, 2.5, N_mu);
 
 % Storage for the specific branches shown in Figure 3
 results = struct('m1',[], 'p0',[], 'comb10',[], 'comb21',[], 'comb22',[]);
->>>>>>> 16342c24dd3d857b752736907883e637769b53ac
 
 for k = 1:N_mu
     mu = mu_vals(k);
-    
-<<<<<<< HEAD
     % Exact Flap Equation Matrix from Peters (Eq 2)
     % beta'' + C(t)beta' + K(t)beta = 0
     C_t = @(t) (gamma/8) * (1 + (4/3)*mu*sin(t));
@@ -122,7 +118,7 @@ text(0.6, 0.28, '[+0]', 'FontSize', 12);
 text(1.3, 0.35, '[-1/+0]', 'FontSize', 12);
 text(1.2, 0.20, '[-2/+1]', 'FontSize', 12);
 text(2.5, 0.15, '[-2/+2]', 'FontSize', 12);
-=======
+
     % Corrected periodic coefficients for Rotor Flapping
     C_t = @(t) (gamma/8) * (1 + (4/3)*mu*sin(t));
     K_t = @(t) p^2 + (gamma/8) * ((4/3)*mu*cos(t) + (mu^2)*sin(2*t)); 
@@ -173,7 +169,6 @@ text(2.5, 0.15, '[-2/+2]', 'FontSize', 12);
     results.comb10(k) = (get_mag(-1) + get_mag(0))/total;
     results.comb21(k) = (get_mag(-2) + get_mag(1))/total;
     results.comb22(k) = (get_mag(-2) + get_mag(2))/total;
-end
 
 % --- Plotting to match JAHS 2011 Figure 3 ---
 figure('Color','w'); hold on; grid on;
@@ -188,4 +183,4 @@ xlabel('Advance Ratio \mu');
 ylabel('Harmonic Participation \phi_n');
 title('Replication of Peters (2011) Fig. 10');
 axis([0 2.5 0 0.6]);
->>>>>>> 16342c24dd3d857b752736907883e637769b53ac
+
