@@ -7,13 +7,13 @@ clear; clc; close all;
 %% ------------------------------------------------------------------------
 Omega = 1;           
 T     = 2*pi/Omega;  
-w_values = [0.3, 0.5, 0.7];
+w_values = 0.3 %  [0.3, 0.5, 0.7];
 N_FFT  = 4096;
-m_range = -4:4;      
-m_range_harm = -3:3; 
+m_range = -5:5;      
+ 
 x0 = eye(2);         
-
-ode_mat = @(t, epsilon, w_sq) [0, 1; -(w_sq + epsilon*sin(Omega*t)), 0];
+D = 0
+ode_mat = @(t, epsilon, w_sq) [0, 1; -(w_sq + epsilon*sin(Omega*t)), -2*D];
 
 %% ========================================================================
 % Loop over w-values
@@ -23,7 +23,7 @@ for w = w_values
     
     % Setup Epsilon Range
     eps_end = 3.5; if abs(w - 0.3) < 1e-3, eps_end = 5; end
-    eps_vals = linspace(0, eps_end, 400);
+    eps_vals = linspace(0, eps_end, 1000);
     
     % Pre-allocate storage
     freq_results = struct();
@@ -31,7 +31,7 @@ for w = w_values
         f_field = matlab.lang.makeValidName(['m_' num2str(m)]);
         freq_results.(f_field) = zeros(length(eps_vals), 2);
     end
-    participation_data = zeros(length(eps_vals), length(m_range_harm));
+    participation_data = zeros(length(eps_vals), length(m_range));
     composite_freq = zeros(length(eps_vals), 1); % Store weighted sum
     
     % Mode tracking initialization
@@ -66,26 +66,22 @@ for w = w_values
         C = fftshift(fft(Q_t)/N_FFT);
         freqs_fft = (-(N_FFT/2) : (N_FFT/2-1)) / T;
         
-        % 4. Calculate Individual Branch Frequencies
+        % 4. Calculate Individual Branch Frequencies and Modal Participation
         basis_imag = imag(eta_mode) / Omega;
-        current_step_branch_freqs = zeros(1, length(m_range_harm));
-        
+        current_step_branch_freqs = zeros(1, length(m_range));
+        m_mags = zeros(1, length(m_range));
+        i_m = 0;
         for m = m_range
+            i_m = i_m + 1;
             f_field = matlab.lang.makeValidName(['m_' num2str(m)]);
             branch_f = (m == 0) * basis_imag + (m ~= 0) * (abs(m)*Omega + sign(m)*basis_imag);
             freq_results.(f_field)(k, :) = [epsilon, branch_f];
-        end
-        
-        % 5. Participation & Composite Frequency Calculation
-        m_mags = zeros(1, length(m_range_harm));
-        for i_m = 1:length(m_range_harm)
-            m_val = m_range_harm(i_m);
-            [~, f_idx] = min(abs(freqs_fft - m_val/T));
+            [~, f_idx] = min(abs(freqs_fft - m/T));
             m_mags(i_m) = abs(C(f_idx));
-            
+
             % Identify the specific frequency for this harmonic branch at current epsilon
-            current_step_branch_freqs(i_m) = (m_val == 0) * basis_imag + ...
-                                             (m_val ~= 0) * (abs(m_val)*Omega + sign(m_val)*basis_imag);
+            current_step_branch_freqs(i_m) = (m == 0) * basis_imag + ...
+                (m ~= 0) * (abs(m)*Omega + sign(m)*basis_imag);
         end
         
         if sum(m_mags) > 1e-12
@@ -111,7 +107,7 @@ for w = w_values
     plot(eps_vals, participation_data, 'LineWidth', 1.5);
     title(['Harmonic Participation for w = ', num2str(w)]);
     xlabel('\epsilon'); ylabel('Participation'); grid on;
-    legend(cellstr(num2str(m_range_harm', 'm=%d')), 'Location', 'bestoutside');
+    legend(cellstr(num2str(m_range', 'm=%d')), 'Location', 'bestoutside');
 
     % 3. Frequency Branches Plot
     figure('Name', sprintf('Freq Branches w=%.1f', w), 'Color', 'w'); hold on;
