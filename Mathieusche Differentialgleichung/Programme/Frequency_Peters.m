@@ -1,4 +1,3 @@
-
 % function Frequency_Peters
 % Floquet Frequency Plot for Mathieu's Equation (Figure 2 Appearance)
 % Separates branches according to the integer multiple 'm' used.
