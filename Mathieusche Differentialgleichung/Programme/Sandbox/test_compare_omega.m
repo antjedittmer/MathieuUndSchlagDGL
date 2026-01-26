@@ -1,0 +1,16 @@
+clc; clear; close all;
+load('CharExTableRaw.mat','CharExTable');
+Im_AllLine = CharExTable.Freq_s1_norm + (0:0.5:2.5).*ones(size(CharExTable.Freq_s1_norm));
+omega = sqrt(CharExTable.nu02);
+% Prepare the figure for plotting
+figure;
+hold on;
+plot(Im_AllLine);
+plot(omega,'k')
+
+Im_m = NaN(size(omega));
+ for idx = 1:length(omega)
+    [Im_m_d(idx),idxmin(idx)]= min(abs(Im_AllLine(idx,:)-omega(idx,:)));
+    Im_m(idx) = Im_AllLine(idx,idxmin(idx));
+ end
+figure; plot(Im_m)

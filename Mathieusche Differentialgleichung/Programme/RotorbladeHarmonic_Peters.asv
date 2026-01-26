@@ -1,0 +1,105 @@
+% MATLAB script to plot Harmonic Participation for Rotor-Blade Flapping
+% Reference: Peters et al., "Interpretation of Floquet Eigenvalues and Eigenvectors"
+% Parameters: p = 1.0 (Flap Frequency), gamma = 12 (Lock Number)
+
+clear; clc;
+
+% System Parameters
+p = 1.0; 
+gamma = 12;
+mu_vals = 0:0.05:2.5; % Advance ratio range
+n_harmonics = 4;      % Number of harmonics to track (0, +/-1, +/-2, etc.)
+T = 2*pi;             % Period of one revolution
+
+% Initialize results storage
+phi_results = zeros(length(mu_vals), 2*n_harmonics + 1); 
+
+for i = 1:length(mu_vals)
+    mu = mu_vals(i);
+    
+    % 1. Compute Floquet Transition Matrix Phi(T)
+    % We solve dot(Phi) = A(t)*Phi with Phi(0) = I
+    options = odeset('RelTol', 1e-9, 'AbsTol', 1e-12);
+    [~, Y_TM] = ode45(@(t, y) transition_matrix_ode(t, y, p, gamma, mu), [0 T], eye(2), options);
+    
+    % Reshape the final row of results back into a 2x2 matrix
+    Phi_T = reshape(Y_TM(end, :), 2, 2);
+    
+    % 2. Extract Eigenvalues and Eigenvectors
+    [V, D] = eig(Phi_T);
+    eigenvalues = diag(D);
+    
+    % Select the branch corresponding to the flapping mode
+    % We pick the eigenvalue with the larger imaginary part for the 1/rev mode
+    [~, idx] = max(abs(imag(log(eigenvalues + eps)))); 
+    eta = log(eigenvalues(idx)) / T; % Characteristic exponent
+    v0 = V(:, idx);                  % Initial condition for the periodic eigenvector
+    
+    % 3. Extract Periodic Eigenvector a(t) over one period
+    % x(t) = a(t) * exp(eta*t) => a(t) = x(t) * exp(-eta*t)
+    t_span = linspace(0, T, 512);
+    [~, Y_traj] = ode45(@(t, y) flapping_ode(t, y, p, gamma, mu), t_span, v0, options);
+    
+    % Periodic part of the state
+    a_t = Y_traj(:, 1) .* exp(-eta * t_span');
+    
+    % 4. Fourier Analysis to find Harmonic Participation Factors
+    L = length(t_span);
+    Y_fft = fft(a_t) / L;
+    
+    % Store magnitudes for harmonics from -n to +n
+    factors = zeros(1, 2*n_harmonics + 1);
+    for n = -n_harmonics:n_harmonics
+        if n >= 0
+            factors(n + n_harmonics + 1) = abs(Y_fft(n + 1));
+        else
+            factors(n + n_harmonics + 1) = abs(Y_fft(L + n + 1));
+        end
+    end
+    
+    % Normalize: Participation factor = |c_n| / sum(|c_j|)
+    phi_results(i, :) = factors / sum(factors);
+end
+
+% Group combined strengths for plotting: [+0], [+/-1], [+/-2], etc.
+phi_combined = zeros(length(mu_vals), n_harmonics + 1);
+phi_combined(:, 1) = phi_results(:, n_harmonics + 1); % The [+0] term
+for n = 1:n_harmonics
+    phi_combined(:, n+1) = phi_results(:, n_harmonics + 1 + n) + ...
+                           phi_results(:, n_harmonics + 1 - n);
+end
+
+% --- Plotting ---
+figure('Color', 'w');
+plot(mu_vals, phi_combined, 'LineWidth', 2);
+xlabel('Advance Ratio \mu', 'FontSize', 12);
+ylabel('Harmonic Participation Factor \phi_n', 'FontSize', 12);
+title(['Harmonic Participation for p = ', num2str(p), ', \gamma = ', num2str(gamma)]);
+legend('[+0]', '[\pm1]', '[\pm2]', '[\pm3]', '[\pm4]', 'Location', 'Best');
+grid on; axis([0 2.5 0 1]);
+
+% --- Helper ODE Functions ---
+
+function dPhi_vec = transition_matrix_ode(t, Phi_vec, p, gamma, mu)
+    % ODE for the 2x2 Transition Matrix (4 elements)
+    Phi = reshape(Phi_vec, 2, 2);
+    
+    % Time-varying coefficients
+    C_t = (gamma / 2) * (1/3 + (1/2) * mu * sin(t));
+    K_t = p^2 + (gamma / 2) * ((1/4) * mu * cos(t) + (1/2) * mu^2 * sin(t) * cos(t));
+    
+    % State-space matrix A(t)
+    A = [0, 1; -K_t, -C_t];
+    
+    % d/dt(Phi) = A(t) * Phi
+    dPhi_mat = A * Phi;
+    dPhi_vec = dPhi_mat(:); % Return as a 4x1 vector
+end
+
+function dy = flapping_ode(t, y, p, gamma, mu)
+    % Standard 2nd order ODE for a single state vector (2 elements)
+    C_t = (gamma / 2) * (1/3 + (1/2) * mu * sin(t));
+    K_t = p^2 + (gamma / 2) * ((1/4) * mu * cos(t) + (1/2) * mu^2 * sin(t) * cos(t));
+    
+    dy = [y(2); -K_t * y(1) - C_t * y(2)];
+end
