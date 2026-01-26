@@ -7,7 +7,11 @@
 clc; clear; close all;
 
 % --- Setup and Parameters ---
+<<<<<<< HEAD
 loadMat = 0; % Load mat-file if results with the same D are already available
+=======
+loadMat = 1; % Load mat-file if results with the same D are already available
+>>>>>>> 16342c24dd3d857b752736907883e637769b53ac
 SW = 0.1;    % Step width for nu_0^2 and nu_C^2 sweep
 unt0 = 0;    % Lower bound for nu_0^2 (x-axis)
 untC = 0;    % Lower bound for nu_C^2 (y-axis)
@@ -200,7 +204,11 @@ for dIdx = 1:length(DVec)
     title('Imaginary Part (test function)','interpreter','latex','FontSize', fs+2)
     xlabel('Parameter $\nu_0^2$ $\rm{[-]}$','interpreter','latex','FontSize', fs+2);
     ylabel('Im$(s_R)$ $\rm{[-]}$','interpreter','latex','FontSize', fs+2);
+<<<<<<< HEAD
     legend('Location','NorthEast', 'Interpreter','latex');
+=======
+    
+>>>>>>> 16342c24dd3d857b752736907883e637769b53ac
 
     linkaxes(h,'x')
     for idxH = 1:length(h)

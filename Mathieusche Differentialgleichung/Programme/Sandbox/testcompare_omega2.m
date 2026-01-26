@@ -45,8 +45,15 @@ for idx = 1:length(omega)
         end
     end
 end
+<<<<<<< HEAD
 hold on;
 plot(Im_m,'b','LineWidth',1.5);      % blue curve, non-decreasing
+=======
+
+figure; hold on;
+plot(Im_m,'b','LineWidth',1.5);      % blue curve, non-decreasing
+plot(omega,'k--','LineWidth',1.5);   % dashed omega
+>>>>>>> 16342c24dd3d857b752736907883e637769b53ac
 xlabel('Index');
 ylabel('Value');
 grid on;

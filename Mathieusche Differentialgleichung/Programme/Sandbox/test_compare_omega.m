@@ -13,4 +13,8 @@ Im_m = NaN(size(omega));
     [Im_m_d(idx),idxmin(idx)]= min(abs(Im_AllLine(idx,:)-omega(idx,:)));
     Im_m(idx) = Im_AllLine(idx,idxmin(idx));
  end
+<<<<<<< HEAD
  plot(Im_m,'r')
+=======
+figure; plot(Im_m)
+>>>>>>> 16342c24dd3d857b752736907883e637769b53ac
