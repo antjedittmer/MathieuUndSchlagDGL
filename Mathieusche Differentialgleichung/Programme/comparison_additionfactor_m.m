@@ -38,7 +38,7 @@ for i = 1:length(peters_mats)
             ImP = NaN(size(nu_P));
             for idx = 1:length(nu_P)
                 diff = Im_AllLine(idx,:) - omega0(idx);
-                mask = diff <= 0;
+                mask = diff <= 0.1;
                 if any(mask)
                     [ImP(idx), ~] = max(Im_AllLine(idx,mask));
                 else

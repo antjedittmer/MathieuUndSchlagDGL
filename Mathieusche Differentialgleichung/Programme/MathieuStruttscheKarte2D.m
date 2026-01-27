@@ -2,8 +2,8 @@
 % Berechnung der Struttschen Karten in den Grenzen von nu_02 und nu_C2
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 clc; clear; close all;
-loadMat = 1;  % mat-file laden, wenn Ergebnisse mit gleichem D vorhanden
-SW = 0.1; %stepwidth
+loadMat = 0;  % mat-file laden, wenn Ergebnisse mit gleichem D vorhanden
+SW = 0.05; %stepwidth
 unt0 = 0;
 untC = 0;
 ob0 = 9;
@@ -24,7 +24,7 @@ dDir1 = fullfile(dDir,'dataFolder_Arnold_Classic_Symmetric_test');
 if ~isfolder(dDir1)
     mkdir(dDir1)
 end
-excelDir =fullfile (dDir,'dataFolder_Arnold_Excel_Classic_Symmetric_test');
+excelDir =fullfile(dDir,'dataFolder_Arnold_Excel_Classic_Symmetric_test');
 if ~isfolder(excelDir)
     mkdir(excelDir);
 end
@@ -55,7 +55,7 @@ for dIdx = 1: length(DVec)
     lenNu = lenNu02 * lenNuC2; % Anzahl Kombination Nu_C2 Werte
     lenNuDiag = min(lenNu02,lenNuC2); % Anzahl Werte nu_02 == nu_C2
     Monodromie = zeros(Nz);
-    CharEx = zeros(lenNuDiag,Nz*4+4); % nu, nc, Real1,2, Imag12, Imag1,2, Pole
+    CharEx = zeros(lenNuDiag,Nz*4+4+1); % nu, nc, Real1,2, Imag12, Imag1,2, Pole, Imaginary part without addition factor
     nAddVector = nan(lenNuDiag,1);
     plotwertstabil = zeros(lenNu,3);
     %nuCSwitchVec = [0.1,1,1.5^2,2^2,2.5^2] - 0.1;
@@ -107,7 +107,7 @@ for dIdx = 1: length(DVec)
                     end
                     
                     ImagEigSortN = [Eig.ImagCorrectedNeg, Eig.ImagCorrected] + [-n,n];
-                    CharEx(oidx,:) = [nu_02, nu_C2, Eig.Real', min(Eig.ImagSort), max(Eig.ImagSort), ImagEigSortN, eP', Eig.Imag'];
+                    CharEx(oidx,:) = [nu_02, nu_C2, Eig.Real', min(Eig.ImagSort), max(Eig.ImagSort), ImagEigSortN, eP', Eig.Imag', Eig.ImagCorrected];
                     nAddVector(oidx) = n;
                     oidx = oidx + 1;
                 end
@@ -127,8 +127,8 @@ for dIdx = 1: length(DVec)
     %%
     try
         %[nu_02, nu_C2, Eig.Real', min(ImagEigSort), max(ImagEigSort), ImagEigSortN, eP'];
-        CharExTable = array2table(CharEx(:,[1:4,7,8]),'VariableNames',...
-            {'nu02','nu_C2','Eig.Real1','Eig.Real2', 'ImagEig1', 'ImagEig2'});
+        CharExTable = array2table(CharEx(:,[1:4,7,8,end]),'VariableNames',...
+            {'nu02','nu_C2','Eig.Real1','Eig.Real2', 'ImagEig1', 'ImagEig2', 'ImagEigNoadditionfactor'});
         CharExTable.RealCharExp1 = real(CharEx(:,9));
         CharExTable.ImagCharExp1 = imag(CharEx(:,9));
         CharExTable.RealCharExp2 = real(CharEx(:,10));
