@@ -8,15 +8,23 @@ unt0 = 0;
 untC = 0;
 ob0 = 9;
 obC = 9;
-fDir = 'figureFolder1'; % Ordner Abbildungen
+fDir = 'figureFolder'; % Folder for figures
 if ~isdir(fDir) %#ok<ISDIR>
     mkdir(fDir)
 end
-dDir = 'dataFolder_Arnold_Classic_Symmetric_test';
-if ~isfolder(dDir)
+fDir1 = fullfile(fDir,'figureFolder1'); % Subfolder specific 
+if ~isdir(fDir1) %#ok<ISDIR>
+    mkdir(fDir1)
+end
+dDir = 'dataFolder'; % Folder for figures
+if ~isdir(dDir) %#ok<ISDIR>
     mkdir(dDir)
 end
-excelDir = 'dataFolder_Arnold_Excel_Classic_Symmetric_test';
+dDir1 = fullfile(dDir,'dataFolder_Arnold_Classic_Symmetric_test');
+if ~isfolder(dDir1)
+    mkdir(dDir1)
+end
+excelDir =fullfile (dDir,'dataFolder_Arnold_Excel_Classic_Symmetric_test');
 if ~isfolder(excelDir)
     mkdir(excelDir);
 end
@@ -38,7 +46,7 @@ for dIdx = 1: length(DVec)
     if unt0 == 0
         matName = strrep(matName,'.mat','_unt0.mat');
     end
-    fileName = fullfile(dDir,matName);
+    fileName = fullfile(dDir1,matName);
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % Vorbereitung der in den Schleifen zu fuellenden Arrays zwecks
     % Programmbeschleunigung
@@ -128,7 +136,7 @@ for dIdx = 1: length(DVec)
         % CharAllTable = array2table(CharEx(:,[1:4,7,8,9,10]),'VariableNames',...
         %    {'nu02','nu_C2','Eig.Real1','Eig.Real2', 'ImagEig1', 'ImagEig2','CharExp1','CharExp2'});
         excelfilename = strrep(fileName,'.mat','CharExAll.xlsx');
-        excelfilename1 = strrep(excelfilename,dDir,excelDir);
+        excelfilename1 = strrep(excelfilename,dDir1,excelDir);
         writetable(CharExTable,excelfilename1)
         % plotwertstabilTable = array2table(plotwertstabil,'VariableNames', {'nu02', 'nu_C2','b'});
         % excelfilename1 = strrep(fileName,'.mat','plotwertstabil.xlsx');

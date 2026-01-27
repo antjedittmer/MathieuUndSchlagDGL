@@ -1,0 +1,9 @@
+# Ignore all files
+*.asv
+*.png
+*.fig
+*.ex*
+
+# Ignore all files in any directory named data or figure
+data*/
+figure*/
