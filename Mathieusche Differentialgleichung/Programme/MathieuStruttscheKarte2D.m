@@ -3,7 +3,7 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 clc; clear; close all;
 loadMat = 0;  % mat-file laden, wenn Ergebnisse mit gleichem D vorhanden
-SW = 0.05; %stepwidth
+SW = 0.1; %stepwidth
 unt0 = 0;
 untC = 0;
 ob0 = 9;

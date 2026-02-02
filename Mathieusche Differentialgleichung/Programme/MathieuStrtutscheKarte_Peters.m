@@ -165,7 +165,7 @@ for dIdx = 1:length(DVec)
 
     for idx = 1:length(omega)
         diff = Im_AllLine(idx,:) - omega(idx);   % no abs
-        mask = diff <= 0;                        % only from below
+        mask = diff <= 0.1;                        % only from below
 
         if idx == 1
             % first point: closest from below
