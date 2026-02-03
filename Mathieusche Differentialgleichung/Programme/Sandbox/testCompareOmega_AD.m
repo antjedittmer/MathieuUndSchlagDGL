@@ -11,7 +11,7 @@ im_matrix = CharEx(:,5) + vec .* ones(size(CharEx(:,5)));
 im_min = nan(length(omega),1);
 im_idx  = nan(length(omega),1);
 for idx = 1: length(omega)
-    tmpIdx  = omega(idx) >= im_matrix(idx,:); % only use values smaller than omega
+    tmpIdx  = omega(idx) >= im_matrix(idx,:) - 0.1; % only use values smaller than omega
     tmp_im_matrix = im_matrix(idx,tmpIdx); % values from currem row smaller than omega
     [~,im_idx(idx)] = min(abs(omega(idx) - tmp_im_matrix)); % index value close to omega
     im_min(idx) = im_matrix(idx,im_idx(idx)); %imag. part char. exp. with addition factor closest to omega

@@ -7,7 +7,30 @@ dDirA = fullfile('dataFolder', 'dataFolder_Arnold_Classic_Symmetric_test');
 matA = 'STRUTTscheKarte_D1dot5e-01_SW1dot0e-01_unt0.mat';
 S_A = load(fullfile(dDirA, matA));
 nu_A = S_A.CharEx(:,1);
+ReA1 = S_A.CharEx(:,3);
+ReA2 = S_A.CharEx(:,4);
+ImA1 = S_A.CharEx(:,8);
 ImA2 = S_A.CharEx(:,8);  % Trusted Im(s_R2) - Arnold reference
+
+figure('Name', 'Characteristic Exponent from Arnold''s Method', 'Color', 'w'); 
+
+scatter(ReA1, ImA1, 40, nu_A, 'o', 'DisplayName','s_{R1} = \sigma_1 + i \omega_1');
+hold on;
+scatter(ReA2, ImA2, 40, nu_A, '*', 'DisplayName','s_{R2}= \sigma_2 + i \omega_2');
+grid on;
+
+xlabel('Real part characteristic exponent \sigma')
+ylabel('Imag. part characteristic exponent \omega')
+
+title('Real vs. Imag. Parts Char. Exponents (Arnolds''s Method)')
+set(findall(gcf,'-property','FontSize'),'FontSize',12)
+cb = colorbar;
+cb.Label.String = 'Amplication factor \nu_c^2';
+
+lgd = legend('Location','southoutside','Orientation','horizontal','FontSize',12);
+legend boxoff
+
+
 fprintf('Arnold: %d points ✓\n', length(nu_A));
 
 %% === FIGURE FOLDER SETUP ===
@@ -23,7 +46,7 @@ end
 %% === GLOBAL PARAMETERS ===
 Omega = 1;           
 T = 2*pi/Omega;  
-nu_vals = linspace(0.01, 9, 500); 
+nu_vals = linspace(0, 9, 500); 
 m_range = -4:4;                   
 N_FFT = 2048;
 D = 0;                            
@@ -104,12 +127,12 @@ tiledlayout(4,1,'TileSpacing','tight');
 % Subplot 1: Composite Frequency (Peters solid) vs Arnold (dashed) + Growth Rate
 nexttile; %subplot(4,1,1);
 yyaxis left
-plot(nu_vals, composite_freq, '-', 'LineWidth', 2, 'Color', cl(1,:), 'DisplayName', 'Peters calculation');
+plot(nu_A, ImA2, '-', 'LineWidth', 1.3, 'Color', 'black', 'DisplayName', 'Arnold calculation');
 hold on;
-plot(nu_A, ImA2, '--', 'LineWidth', 2, 'Color', cl(1,:), 'DisplayName', 'Arnold calculation');
+plot(nu_vals, composite_freq, '-.', 'LineWidth', 1.3, 'Color', cl(1,:), 'DisplayName', 'Peters calculation');
 ylabel('\omega = Im(s_R)');
 yyaxis right
-plot(nu_vals, growth_rate, '-', 'LineWidth', 1.5, 'Color', cl(2,:), 'DisplayName', 'Real Part Re(s_R)');
+plot(nu_vals, growth_rate, '-', 'LineWidth', 1.3, 'Color', cl(2,:), 'DisplayName', 'Real Part Re(s_R)');
 ylabel('\sigma = Re(s_R)');
 title('Mathieu ODE: x''''(t)+ 2Dx''(t) +(\nu_0^2 + \nu_c^2 cos(t))x(t) = 0, D = 0, \nu_0 = \nu_c','Real and Imaginary Part of Characteristic Exponent');
 legend('Location','best');
@@ -118,16 +141,19 @@ grid on;
 % Subplot 2: Difference (Peters - Arnold)
 nexttile; %subplot(4,1,2);
 ImA2Interp = interp1(nu_A, ImA2, nu_vals);
-plot(nu_vals, composite_freq - ImA2Interp', 'Color', cl(1,:), 'LineWidth', 1.5, 'DisplayName', 'Peters - Arnold');
+plot(nu_vals, composite_freq - ImA2Interp', 'Color', cl(1,:), 'LineWidth', 1.3, 'DisplayName', 'Peters - Arnold');
 ylabel('Δω');
 title('Difference Imaginary Part of Characteristic Exponent');
 legend('Location','best');
 grid on;
 
 % Subplot 3: Frequency Branches
+lsCell = {'-','--','-.',':','--'};
 nexttile; %subplot(4,1,3);
 for idx = 1: size(branch_freqs_all,2)
-    plot(nu_vals, branch_freqs_all(:,idx), 'LineWidth', 1, 'color',cl(idx,:));
+    idxLs = mod(idx-1,length(lsCell)) + 1;
+    %idxLs = floor((idx-1)/length(lsCell)) +1;
+    plot(nu_vals, branch_freqs_all(:,idx), 'LineWidth', 1.3, 'color',cl(idx,:),'LineStyle',lsCell{idxLs});
     hold on;
 end
 ylabel('Branch Freqs');
@@ -139,7 +165,9 @@ grid on;
 nexttile; %subplot(4,1,4);
 %set(gca, 'ColorOrder', jet(length(m_range))); 
 for idx = 1: size(branch_freqs_all,2)
-    plot(nu_vals, participation_data(:,idx), 'LineWidth', 1, 'color',cl(idx,:));
+    idxLs = mod(idx-1,length(lsCell)) + 1;
+    % idxLs = floor((idx-1)/length(lsCell)) +1;
+    plot(nu_vals, participation_data(:,idx), 'LineWidth', 1, 'color',cl(idx,:),'LineStyle',lsCell{idxLs});
     hold on;
 end
 xlabel('Amplification factor \nu^2_c');
