@@ -91,45 +91,58 @@ for k = 1:length(nu_vals)
 end
 
 %% === PLOTTING ===
-cl = lines;
-fig = figure('Name', 'Characteristic Exponent: Peters vs Arnold', 'Color', 'w', 'Position', [100, 50, 900, 950]);
+nc = size(unique(lines,'rows'),1); % Numbers of different colors: nc = 7
+lines0 = lines;
+cl = [lines0(1:nc,:); 0*ones(1,3); 0.5*ones(1,3)]; % 7 line colors, black and grey
+
+fig = figure('Name', 'Characteristic Exponent: Peters vs Arnold', 'Color', 'w'); 
+pos0 = get(0,'defaultFigurePosition');
+fig.Position = [pos0(1), pos0(2)- 0.3*pos0(4), pos0(3), 1.5*pos0(4)];
+tiledlayout(4,1,'TileSpacing','tight');
+
 
 % Subplot 1: Composite Frequency (Peters solid) vs Arnold (dashed) + Growth Rate
-subplot(4,1,1);
+nexttile; %subplot(4,1,1);
 yyaxis left
 plot(nu_vals, composite_freq, '-', 'LineWidth', 2, 'Color', cl(1,:), 'DisplayName', 'Peters calculation');
 hold on;
 plot(nu_A, ImA2, '--', 'LineWidth', 2, 'Color', cl(1,:), 'DisplayName', 'Arnold calculation');
-ylabel('Freq \omega_{comp}/\Omega');
+ylabel('\omega = Im(s_R)');
 yyaxis right
 plot(nu_vals, growth_rate, '-', 'LineWidth', 1.5, 'Color', cl(2,:), 'DisplayName', 'Real Part Re(s_R)');
-ylabel('Real Part Re(s_R)');
-title('Real and Imaginary Part of Characteristic Exponent');
+ylabel('\sigma = Re(s_R)');
+title('Mathieu ODE (Arnold): x''''+ 2D +(\nu_0^2 + \nu_c^2 cos(t))x = 0, ','Real and Imaginary Part of Characteristic Exponent');
 legend('Location','best');
 grid on;
 
 % Subplot 2: Difference (Peters - Arnold)
-subplot(4,1,2);
+nexttile; %subplot(4,1,2);
 ImA2Interp = interp1(nu_A, ImA2, nu_vals);
-plot(nu_vals, composite_freq - ImA2Interp', 'Color', [0, 0.5, 0], 'LineWidth', 1.5, 'DisplayName', 'Peters - Arnold');
+plot(nu_vals, composite_freq - ImA2Interp', 'Color', cl(1,:), 'LineWidth', 1.5, 'DisplayName', 'Peters - Arnold');
 ylabel('Δω');
-title('Difference in imaginary part of characteristic exponent');
+title('Difference Imaginary Part of Characteristic Exponent');
 legend('Location','best');
 grid on;
 
 % Subplot 3: Frequency Branches
-subplot(4,1,3);
-plot(nu_vals, branch_freqs_all, 'LineWidth', 1);
+nexttile; %subplot(4,1,3);
+for idx = 1: size(branch_freqs_all,2)
+    plot(nu_vals, branch_freqs_all(:,idx), 'LineWidth', 1, 'color',cl(idx,:));
+    hold on;
+end
 ylabel('Branch Freqs');
 title('Individual Frequency Branches');
 legend(arrayfun(@(m) sprintf('m=%d', m_range(m)), 1:length(m_range), 'UniformOutput', false), 'Location','northeastoutside');
 grid on;
 
 % Subplot 4: Harmonic Participation
-subplot(4,1,4);
-set(gca, 'ColorOrder', jet(length(m_range))); 
-plot(nu_vals, participation_data, 'LineWidth', 1.2);
-xlabel('Differential equation according to Arnold');
+nexttile; %subplot(4,1,4);
+%set(gca, 'ColorOrder', jet(length(m_range))); 
+for idx = 1: size(branch_freqs_all,2)
+    plot(nu_vals, participation_data(:,idx), 'LineWidth', 1, 'color',cl(idx,:));
+    hold on;
+end
+xlabel('Amplification factor \nu^2_c');
 ylabel('Weight');
 title('Harmonic Participation');
 legend(arrayfun(@(m) sprintf('m=%d', m_range(m)), 1:length(m_range), 'UniformOutput', false), 'Location','northeastoutside');
