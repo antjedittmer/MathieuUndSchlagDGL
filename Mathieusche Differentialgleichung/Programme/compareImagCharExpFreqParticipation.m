@@ -111,7 +111,7 @@ ylabel('\omega = Im(s_R)');
 yyaxis right
 plot(nu_vals, growth_rate, '-', 'LineWidth', 1.5, 'Color', cl(2,:), 'DisplayName', 'Real Part Re(s_R)');
 ylabel('\sigma = Re(s_R)');
-title('Mathieu ODE (Arnold): x''''+ 2D +(\nu_0^2 + \nu_c^2 cos(t))x = 0, ','Real and Imaginary Part of Characteristic Exponent');
+title('Mathieu ODE: x''''(t)+ 2Dx''(t) +(\nu_0^2 + \nu_c^2 cos(t))x(t) = 0, D = 0, \nu_0 = \nu_c','Real and Imaginary Part of Characteristic Exponent');
 legend('Location','best');
 grid on;
 
