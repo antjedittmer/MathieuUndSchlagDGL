@@ -6,7 +6,13 @@
 *.fig
 *.mat
 *.ex*
+*.pdf
 
 # Ignore entire folder contents recursively
 **/dataFolder/
 **/figureFolder/
+
+# EXCEPTIONS: Do NOT ignore these specific .mat files
+!*/*/Sandbox/*.mat/*.mat
+!"*/Mathieusche Differentialgleichung/*.mat"
+!"*/Schlagdifferentialgleichung/Workspace.mat"
