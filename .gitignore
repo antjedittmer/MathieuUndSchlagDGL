@@ -1,9 +1,12 @@
-# Ignore all files
+# Ignore all MATLAB temporary/autosave files
 *.asv
+
+# Ignore all specific figure and data file types
 *.png
 *.fig
+*.mat
 *.ex*
 
-# Ignore all files in any directory named data or figure
-data*/
-figure*/
+# Ignore entire folder contents recursively
+**/dataFolder/
+**/figureFolder/
