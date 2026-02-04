@@ -23,9 +23,14 @@ D = 0.001;
 t0 = 0.0;
 T = 2*pi;
 
-fDir = 'figureFolderStab'; % Ordner Abbildungen
+% --- Setup for Figure Saving ---
+fDir = 'figureFolder'; % Folder for figures
 if ~isdir(fDir) %#ok<ISDIR>
     mkdir(fDir)
+end
+fDir1 = fullfile(fDir,'figureFolderStab'); % Subfolder
+if ~isdir(fDir1) %#ok<ISDIR>
+    mkdir(fDir1)
 end
 
 dDir = 'dataFolder'; % Ordner mat-files

@@ -23,13 +23,16 @@ T = 2*pi;
 tspan = t0:0.0001:T;
 Diagonal = diag(ones(2,1));
 
-
-fDir = 'figureFolder_GeschwX1PosX2'; % Ordner Abbildungen
+% --- Setup for Figure Saving ---
+fDir = 'figureFolder'; % Folder for figures
 if ~isdir(fDir) %#ok<ISDIR>
     mkdir(fDir)
 end
-
-fDirAspect = 'figureFolderAspectPhi';
+fDir1 = fullfile(fDir,'figureFolder_GeschwX1PosX2'); % Subfolder 
+if ~isdir(fDir1) %#ok<ISDIR>
+    mkdir(fDir1)
+end
+fDirAspect = fullfile(fDir,'figureFolderAspectPhi'); % Subfolder 
 if ~isdir(fDirAspect) %#ok<ISDIR>
     mkdir(fDirAspect)
 end

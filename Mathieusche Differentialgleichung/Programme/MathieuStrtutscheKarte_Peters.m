@@ -17,13 +17,27 @@ untC = 0;    % Lower bound for nu_C^2 (y-axis)
 ob0  = 9;    % Upper bound for nu_0^2
 obC  = 9;    % Upper bound for nu_C^2
 
-% Folders
-fDir = 'figureFolder_Arnold_Peters';
-if ~isfolder(fDir), mkdir(fDir); end
-dDir = 'dataFolder_Arnold_Peters';
-if ~isfolder(dDir), mkdir(dDir); end
-excelDir = 'dataFolder_Arnold_Peters_Excel';
-if ~isfolder(excelDir), mkdir(excelDir); end
+% --- Setup for Figure Saving ---
+fDir = 'figureFolder'; % Folder for figures
+if ~isdir(fDir) %#ok<ISDIR>
+    mkdir(fDir)
+end
+fDirPeters = fullfile(fDir,'figureFolder_Arnold_Peters'); % Subfolder specific to Peters' plots
+if ~isdir(fDirPeters) %#ok<ISDIR>
+    mkdir(fDirPeters)
+end
+dDir = 'dataFolder'; % Folder for figures
+if ~isdir(dDir) %#ok<ISDIR>
+    mkdir(dDir)
+end
+dDir1 = fullfile(dDir,'dataFolder_Arnold_Peters');
+if ~isfolder(dDir1)
+    mkdir(dDir1)
+end
+excelDir =fullfile(dDir,'dataFolder_Arnold_Peters_Excel');
+if ~isfolder(excelDir)
+    mkdir(excelDir);
+end
 
 Nz   = 2;      % Number of equations in the DGL system (2nd-order ODE)
 DVec = 0.15;   % Damping coefficient D
@@ -211,7 +225,7 @@ for dIdx = 1:length(DVec)
         set(h(idxH),'TickLabelInterpreter','Latex','FontSize',fs)
     end
 
-    pngname = fullfile(fDir,strrep(matName,'.mat','_Exponents'));
+   pngname = fullfile(fDirPeters, strrep(matName, '.mat', '_Exponents'));
     print(pngname, '-dpng')
 end
 
