@@ -13,6 +13,6 @@
 **/figureFolder/
 
 # EXCEPTIONS: Do NOT ignore these specific .mat files
-!*/*/Sandbox/*.mat/*.mat
-!"*/Mathieusche Differentialgleichung/*.mat"
-!"*/Schlagdifferentialgleichung/Workspace.mat"
+!"Mathieusche Differentialgleichung/Programme/*.mat"
+!"Mathieusche Differentialgleichung/Programme/Sandbox/*.mat"
+!"Schlagdifferentialgleichung/Programme/Workspace.mat"
