@@ -1,5 +1,24 @@
 clear; clc; close all;
 
+%% === FIGURE FOLDER SETUP ===
+fDir = 'figureFolder';
+if ~isdir(fDir) %#ok<*ISDIR>
+    mkdir(fDir);
+end
+fDirPeters = fullfile(fDir, 'figureFolderPeters');
+if ~isdir(fDirPeters)
+    mkdir(fDirPeters);
+end
+
+%% === GLOBAL PARAMETERS ===
+Omega = 1;           
+T = 2*pi/Omega;  
+nu_vals = linspace(0, 9, 500); 
+m_range = -4:4;                   
+N_FFT = 2048;
+D = 0.15;                            
+x0 = eye(2);
+
 %% === SETUP ===
 dDirA = fullfile('dataFolder', 'dataFolder_Arnold_Classic_Symmetric_test');
 
@@ -12,7 +31,10 @@ ReA2 = S_A.CharEx(:,4);
 ImA1 = S_A.CharEx(:,8);
 ImA2 = S_A.CharEx(:,8);  % Trusted Im(s_R2) - Arnold reference
 
-figure('Name', 'Characteristic Exponent from Arnold''s Method', 'Color', 'w'); 
+%% ==== 1.a PLOT CHARACTERISTIC EXPONENT === 
+fig1 = figure('Name', 'Characteristic Exponent from Arnold''s Method', 'Color', 'w'); 
+pos0 = get(0,'defaultFigurePosition');
+fig1.Position = [pos0(1), pos0(2)- 0.15*pos0(4), pos0(3), 1.15*pos0(4)];
 
 scatter(ReA1, ImA1, 40, nu_A, 'o', 'DisplayName','s_{R1} = \sigma_1 + i \omega_1');
 hold on;
@@ -27,36 +49,23 @@ set(findall(gcf,'-property','FontSize'),'FontSize',12)
 cb = colorbar;
 cb.Label.String = 'Amplication factor \nu_c^2';
 
-lgd = legend('Location','southoutside','Orientation','horizontal','FontSize',12);
+legend('Location','southoutside','Orientation','horizontal','FontSize',12);
 legend boxoff
 
+pngname = sprintf('real_vs_imaginary_exponents_Mathieu_Arnold.png');
+pngfile = fullfile(fDirPeters, pngname);
+saveas(fig1, pngfile);
+% fprintf('Figure saved: %s\n', pngfile);
+% fprintf('Arnold: %d points ✓\n', length(nu_A));
 
-fprintf('Arnold: %d points ✓\n', length(nu_A));
-
-%% === FIGURE FOLDER SETUP ===
-fDir = 'figureFolder';
-if ~isdir(fDir)
-    mkdir(fDir);
-end
-fDirPeters = fullfile(fDir, 'figureFolderPeters');
-if ~isdir(fDirPeters)
-    mkdir(fDirPeters);
-end
-
-%% === GLOBAL PARAMETERS ===
-Omega = 1;           
-T = 2*pi/Omega;  
-nu_vals = linspace(0, 9, 500); 
-m_range = -4:4;                   
-N_FFT = 2048;
-D = 0;                            
-x0 = eye(2);
 
 %% === PRE-ALLOCATION ===
 growth_rate = zeros(length(nu_vals), 1); 
 composite_freq = zeros(length(nu_vals), 1); 
 participation_data = zeros(length(nu_vals), length(m_range));
 branch_freqs_all = zeros(length(nu_vals), length(m_range));
+real_all = zeros(length(nu_vals), 2);
+total_mag_all = zeros(length(nu_vals), 1);
 
 %% === INITIAL GUESS FOR MODE TRACKING ===
 eta_prev = 1i * sqrt(nu_vals(1)); 
@@ -74,9 +83,11 @@ for k = 1:length(nu_vals)
     [V, L_mat] = eig(Phi_T);
     eta_vals = log(diag(L_mat)) / T;
     [~, idx] = min(abs(eta_vals - eta_prev)); 
+    %idx = 2;
     eta_mode = eta_vals(idx);
     v_mode = V(:, idx);
     eta_prev = eta_mode; 
+    real_all(k,:) = real(eta_vals)'; % 
     
     growth_rate(k) = real(eta_mode);
     
@@ -106,11 +117,12 @@ for k = 1:length(nu_vals)
     % Normalize weights and compute composite frequency
     weights = participation_data(k, :);
     total_mag = sum(weights);
-    if total_mag > 1e-12
-        weights = weights / total_mag;
-        participation_data(k, :) = weights;
-        composite_freq(k) = sum(branch_freqs_all(k, :) .* weights);
-    end
+    total_mag_all(k) = total_mag;
+    
+    weights = weights / total_mag;
+    participation_data(k, :) = weights;
+    composite_freq(k) = sum(branch_freqs_all(k, :) .* weights);
+    
 end
 
 %% === PLOTTING ===
@@ -119,22 +131,23 @@ lines0 = lines;
 cl = [lines0(1:nc,:); 0*ones(1,3); 0.5*ones(1,3)]; % 7 line colors, black and grey
 
 fig = figure('Name', 'Characteristic Exponent: Peters vs Arnold', 'Color', 'w'); 
-pos0 = get(0,'defaultFigurePosition');
 fig.Position = [pos0(1), pos0(2)- 0.3*pos0(4), pos0(3), 1.5*pos0(4)];
 tiledlayout(4,1,'TileSpacing','tight');
-
 
 % Subplot 1: Composite Frequency (Peters solid) vs Arnold (dashed) + Growth Rate
 nexttile; %subplot(4,1,1);
 yyaxis left
-plot(nu_A, ImA2, '-', 'LineWidth', 1.3, 'Color', 'black', 'DisplayName', 'Arnold calculation');
+plot(nu_A, ImA2, '-', 'LineWidth', 1.3, 'Color', 'black', 'DisplayName', '\omega (Arnold)');
 hold on;
-plot(nu_vals, composite_freq, '-.', 'LineWidth', 1.3, 'Color', cl(1,:), 'DisplayName', 'Peters calculation');
+plot(nu_vals, composite_freq, '-.', 'LineWidth', 1.3, 'Color', cl(1,:), 'DisplayName', '\omega (Peters)');
 ylabel('\omega = Im(s_R)');
 yyaxis right
-plot(nu_vals, growth_rate, '-', 'LineWidth', 1.3, 'Color', cl(2,:), 'DisplayName', 'Real Part Re(s_R)');
+% plot(nu_A, ReA1, '-', 'LineWidth', 1.3, 'Color', 0.5*ones(1,3) , 'DisplayName', '\sigma (Arnold)');
+plot(nu_vals, growth_rate, '-.', 'LineWidth', 1.3, 'Color', cl(2,:), 'DisplayName', '\sigma (Peters)');
 ylabel('\sigma = Re(s_R)');
-title('Mathieu ODE: x''''(t)+ 2Dx''(t) +(\nu_0^2 + \nu_c^2 cos(t))x(t) = 0, D = 0, \nu_0 = \nu_c','Real and Imaginary Part of Characteristic Exponent');
+title({['Mathieu ODE: x''''(t)+ 2Dx''(t) +(\nu_0^2 + \nu_c^2 cos(t))x(t) = 0,'...
+    sprintf(' D = %2.2f', D),', \nu_0 = \nu_c'] ...
+    'Real and Imaginary Part of Characteristic Exponent s_r'});
 legend('Location','best');
 grid on;
 
@@ -152,8 +165,9 @@ lsCell = {'-','--','-.',':','--'};
 nexttile; %subplot(4,1,3);
 for idx = 1: size(branch_freqs_all,2)
     idxLs = mod(idx-1,length(lsCell)) + 1;
+    idxC = mod(idx-1,length(cl)) + 1;
     %idxLs = floor((idx-1)/length(lsCell)) +1;
-    plot(nu_vals, branch_freqs_all(:,idx), 'LineWidth', 1.3, 'color',cl(idx,:),'LineStyle',lsCell{idxLs});
+    plot(nu_vals, branch_freqs_all(:,idx), 'LineWidth', 1.3, 'color',cl(idxC,:),'LineStyle',lsCell{idxLs});
     hold on;
 end
 ylabel('Branch Freqs');
@@ -166,8 +180,8 @@ nexttile; %subplot(4,1,4);
 %set(gca, 'ColorOrder', jet(length(m_range))); 
 for idx = 1: size(branch_freqs_all,2)
     idxLs = mod(idx-1,length(lsCell)) + 1;
-    % idxLs = floor((idx-1)/length(lsCell)) +1;
-    plot(nu_vals, participation_data(:,idx), 'LineWidth', 1, 'color',cl(idx,:),'LineStyle',lsCell{idxLs});
+    idxC = mod(idx-1,length(cl)) + 1;
+    plot(nu_vals, participation_data(:,idx), 'LineWidth', 1, 'color',cl(idxC,:),'LineStyle',lsCell{idxLs});
     hold on;
 end
 xlabel('Amplification factor \nu^2_c');
@@ -181,3 +195,28 @@ pngname = sprintf('compare_char_exp_freq_participation_w1dot0.png');
 pngfile = fullfile(fDirPeters, pngname);
 saveas(fig, pngfile);
 fprintf('Figure saved: %s\n', pngfile);
+
+%% === 
+
+fig2 = figure('Name', 'Characteristic Exponent from Peters'' Method', 'Color', 'w'); 
+fig2.Position = [pos0(1), pos0(2)- 0.15*pos0(4), pos0(3), 1.15*pos0(4)];
+
+scatter(real_all(:,2), composite_freq, 40, nu_vals, 'o', 'DisplayName','s_{R1} = \sigma_1 + i \omega_1');
+hold on;
+scatter(real_all(:,1), composite_freq, 40, nu_vals, '*', 'DisplayName','s_{R2}= \sigma_2 + i \omega_2');
+grid on;
+
+xlabel('Real part characteristic exponent \sigma')
+ylabel('Imag. part characteristic exponent \omega')
+
+title('Real vs. Imag. Parts Char. Exponents (Peters'' Method)')
+set(findall(gcf,'-property','FontSize'),'FontSize',12)
+cb = colorbar;
+cb.Label.String = 'Amplication factor \nu_c^2';
+
+lgd = legend('Location','southoutside','Orientation','horizontal','FontSize',12);
+legend boxoff
+
+pngname = sprintf('real_vs_imaginary_exponents_Mathieu_Peters.png');
+pngfile = fullfile(fDirPeters, pngname);
+saveas(fig1, pngfile);
