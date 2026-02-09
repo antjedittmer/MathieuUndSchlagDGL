@@ -1,108 +1,105 @@
 % Damped Flapping Frequency Plot (Peters' full flapping coefficients)
-%   C(t) = gamma/8 * (1 + 4*mu/3 * sin(t))
-%   K(t) = p^2 + gamma/8 * (4*mu/3 * cos(t) + mu^2 * sin(2*t))
 clear; clc; close all;
+% --- Setup for Figure Saving ---
 fDir = 'figureFolder'; % Folder for figures
-if ~isdir(fDir)
+if ~isdir(fDir) %#ok<ISDIR>
     mkdir(fDir)
 end
 fDirPeters = fullfile(fDir,'figureFolderPeters'); % Subfolder specific to Peters' plots
-if ~isdir(fDirPeters)
+if ~isdir(fDirPeters) %#ok<ISDIR>
     mkdir(fDirPeters)
 end
-K = 'ColoredLines';
-useK = strcmp(K,'BlackLines');
 
 % --- Parameters ---
-p_sq = 1.0^2;          
-gamma_list = [12.0, 9.6];  
-Omega = 1;             
-mu_end = 3;            
-mu_no = 1100;              
-mu_vals = linspace(0, mu_end, mu_no);
+p_sq = 1.0^2;
+gamma_list = [12.0, 9.6];
+Omega = 1;
+mu_no = 1100;
 T = 2*pi / Omega;
-x0 = eye(2); 
-
-% --- Outer Loop for different Gamma values ---
+x0 = eye(2);
 for g_val = gamma_list
     gamma = g_val;
     fprintf('Processing gamma = %.1f...\n', gamma);
-
-    % *** GAMMA-SPECIFIC HARMONIC RANGE ***
+    % Define range based on paper figures
     if gamma == 12.0
-        m_range = (-4:4);  % 9 branches for gamma=12
-    else  % gamma=9.6
-        m_range = (-3:3);  % 7 branches for gamma=9.6
+        mu_end = 3; m_range = (-4:4);
+    else
+        mu_end = 2; m_range = (-3:3);
     end
-    
-    % prepare storage for branches for this specific gamma
+    mu_vals = linspace(0, mu_end, mu_no);
+
     results_by_branch = struct();
     for m = m_range
         fname = matlab.lang.makeValidName(['m_' num2str(m)]);
-        results_by_branch.(fname) = [];
+        results_by_branch.(fname) = zeros(length(mu_vals), 2);
     end
-    
-    % Floquet integration sweep
+
     for k = 1:length(mu_vals)
         mu = mu_vals(k);
-        
-        % Peters' system matrix
+
+        % Dynamic Matrix
         D_func = @(t) [0, 1;
-                       -( p_sq + (gamma/8) * ( (4*mu/3)*cos(t) + (mu^2)*sin(2*t) ) ), ...
-                       - (gamma/8) * (1 + (4*mu/3)*sin(t))];
-        
-        rhs = @(t, x) reshape(D_func(t) * reshape(x, 2, 2), 4, 1);
-        opts = odeset('RelTol',1e-8,'AbsTol',1e-10);
-        
-        [~, Phi_t] = ode45(rhs, [0, T], reshape(x0, 4, 1), opts);
+            -( p_sq + (gamma/8) * ( (4*mu/3)*cos(t) + (mu^2)*sin(2*t) ) ), ...
+            - (gamma/8) * (1 + (4*mu/3)*sin(t))];
+
+        [~, Phi_t] = ode45(@(t, x) reshape(D_func(t) * reshape(x, 2, 2), 4, 1), ...
+            [0, T], reshape(x0, 4, 1), odeset('RelTol',1e-8));
         Phi_T = reshape(Phi_t(end, :), 2, 2);
-        
+
         Lambda = eig(Phi_T);
-        eta = log(Lambda) / T;    
-        normalized_omega = imag(eta) / Omega; 
-        
-        for r = 1:length(normalized_omega)
-            freq_r = normalized_omega(r);
-            basis_freq = mod(freq_r + 0.5, 1) - 0.5;
-            for m = m_range
-                branch_freq = basis_freq + m;
-                fname = matlab.lang.makeValidName(['m_' num2str(m)]);
-                results_by_branch.(fname) = [results_by_branch.(fname); mu, branch_freq];
-            end
+        eta = log(Lambda) / T;
+
+        % Use absolute imaginary part of one eigenvalue
+        % This prevents double-plotting and ensures the basis is positive
+        basis_freq = abs(imag(eta(1))) / Omega;
+
+        for m = m_range
+            % Proper Peters branch interpretation
+            % Frequencies are shifted by m and follow the sign of the harmonic
+            branch_freq = abs(m + basis_freq);
+            if m < 0, branch_freq = abs(abs(m) - basis_freq); end
+
+            fname = matlab.lang.makeValidName(['m_' num2str(m)]);
+            results_by_branch.(fname)(k, :) = [mu, branch_freq];
         end
     end
-    
-    % --- Plotting for this Gamma ---
-    fig = figure('Color','w','Name', sprintf('Gamma %.1f - Peters Flapping', gamma), ...
-                 'Position',[100 100 1200 600]);
+
+    % --- Plotting ---
+    figure('Color','w','Name', sprintf('Gamma %.1f', gamma), 'Position',[100 100 1100 600]);
     hold on;
-    
-    % Create consistent color map for all 9 harmonics (-4:4)
-    colors = lines(length(m_range));  
-    
-    title(['Frequency vs. $\mu$ (Flapping: $p=' num2str(sqrt(p_sq)) ...
-           ', \gamma=' num2str(gamma) '$)'], 'Interpreter', 'latex');
-    xlabel('$\mu$', 'Interpreter', 'latex');
-    ylabel('Frequency ($\omega/\Omega$)', 'Interpreter', 'latex');
-    
-    % Single clean loop - each m gets unique color by index
+    % Define the color map: first 7 from 'lines', then black, then gray
+    base_colors = lines(7);
+    color_map = [base_colors; 0 0 0; 0.5 0.5 0.5];
+
+    % If m_range is larger than our manual map, expand it to avoid indexing errors
+    if length(m_range) > size(color_map, 1)
+        color_map = lines(length(m_range));
+    end
+
     for i = 1:length(m_range)
         m = m_range(i);
         fname = matlab.lang.makeValidName(['m_' num2str(m)]);
         data = results_by_branch.(fname);
-        
-        if isempty(data), continue; end
-        
-        plot_color = colors(i,:);
-        if useK, plot_color = 'k'; end  
-        
-        plot(data(:,1), data(:,2), '.', 'Color', plot_color, ...
-             'MarkerSize', 8, 'DisplayName', sprintf('$m=%+d$', m));
+        % Use the corrected variable name: color_map
+        plot(data(:,1), data(:,2), '.', 'Color', color_map(i,:), 'MarkerSize', 6, ...
+            'DisplayName', sprintf('m = %+d', m));
     end
-    
-    % Gamma-specific harmonic labels with updated axis limits
-    if gamma == 12.0
-        % Labels for gamma = 12.0 (top-right corner at x=3, y=4.5)
+
+    % Finalizing plot
+    title(['Frequency branches, rotor blade flapping, $p=1.0, \gamma=' num2str(gamma) '$'], ...
+        'Interpreter', 'latex', 'FontSize', 14);
+    xlabel('$\mu$', 'Interpreter', 'latex', 'FontSize', 12);
+    ylabel('Frequency $\omega/\Omega$', 'Interpreter', 'latex', 'FontSize', 12);
+    grid on; box on;
+
+    % Add Legend
+    legend('Location', 'northeastoutside', 'Interpreter', 'latex');
+
+    if gamma == 12.0, axis([0 3 0 4.5]); else, axis([0 2 0 3.5]); end
+    % Add gamma-specific textual labels
+    hold on;
+    if abs(gamma - 12.0) < 1e-6
+        % gamma = 12.0 labels
         text(0.07, 3.8, '[-4]', 'Interpreter', 'latex', 'FontSize', 12, 'FontWeight', 'bold');
         text(0.07, 3.3,  '[+3]', 'Interpreter', 'latex', 'FontSize', 12, 'FontWeight', 'bold');
         text(0.54, 3.8,'[-4/+3]', 'Interpreter', 'latex', 'FontSize', 12, 'FontWeight', 'bold');
@@ -120,9 +117,8 @@ for g_val = gamma_list
         text(2.7, 2.3, '[-2/+2]', 'Interpreter', 'latex', 'FontSize', 12, 'FontWeight', 'bold');
         text(2.7, 1.3, '[-1/+1]', 'Interpreter', 'latex', 'FontSize', 12, 'FontWeight', 'bold');
         text(2.7, 0.3, '[+0]', 'Interpreter', 'latex', 'FontSize', 12, 'FontWeight', 'bold');
-        axis([0 3 0 4.5]);  
-    else  % gamma = 9.6
-        % Specific labels for gamma = 9.6
+    elseif abs(gamma - 9.6) < 1e-6
+        % gamma = 9.6 labels
         text(1.4, 3.2, '$[-3/+3]$', 'Interpreter', 'latex', 'FontSize', 14, 'FontWeight', 'bold');
         text(1.4, 2.2, '$[-2/+2]$', 'Interpreter', 'latex', 'FontSize', 14, 'FontWeight', 'bold');
         text(1.4, 1.2, '$[-1/+1]$', 'Interpreter', 'latex', 'FontSize', 14, 'FontWeight', 'bold');
@@ -133,18 +129,9 @@ for g_val = gamma_list
         text(0.4, 2.22, '$[+2]$', 'Interpreter', 'latex', 'FontSize', 12, 'FontWeight', 'bold');
         text(0.6, 2.80, '$[-3]$', 'Interpreter', 'latex', 'FontSize', 12, 'FontWeight', 'bold');
         text(0.4, 3.22, '$[+3]$', 'Interpreter', 'latex', 'FontSize', 12, 'FontWeight', 'bold');
-
-        axis([0 2 0 3.5]);  
     end
-    
-    grid on; box on;
-    set(gca, 'TickLabelInterpreter', 'latex', 'FontSize', 12);
-    
-    if ~useK
-        legend('Location','northeastoutside','Interpreter','latex');
-    end
-    
-    % Save result
-    pngname = strrep(sprintf('Peters_RotorbladeFlapping_%2.1f', gamma), '.', 'dot');
-    print(fullfile(fDirPeters, [pngname '.png']), '-dpng');
+    % --- File Naming and Saving ---
+    gStr = strrep(num2str(gamma), '.', 'p');
+    pngname = sprintf('PetersRotorFlapping_p1p0_gamma%s', gStr);
+    pngfile = fullfile(fDirPeters,[pngname,'.png']);
 end
