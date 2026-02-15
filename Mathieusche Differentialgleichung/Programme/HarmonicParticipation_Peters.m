@@ -9,15 +9,15 @@
 clear; clc; close all;
 % --- Setup for Figure Saving ---
 fDir = 'figureFolder'; % Folder for figures
-if ~isdir(fDir) %#ok<ISDIR>
+if ~isdir(fDir) %#ok<*ISDIR>
     mkdir(fDir)
 end
 fDirPeters = fullfile(fDir,'figureFolderPeters'); % Subfolder specific to Peters' plots
-if ~isdir(fDirPeters) %#ok<ISDIR>
+if ~isdir(fDirPeters)
     mkdir(fDirPeters)
 end
 
-% --- NEW: Setup for Data Saving ---
+% --- Setup for Data Saving ---
 dDir = 'dataFolder'; % Folder for Excel and .mat files
 if ~isdir(dDir)
     mkdir(dDir)
@@ -46,28 +46,27 @@ for w = w_values
     % Filename generation for saving the plot
     pngname = strrep(sprintf('PetersHarmonicparticipatio%s_w%2.1f',K,w),'.','dot');
     pngfile = fullfile(fDirPeters,[pngname,'.png']);
-    
+
     % --- NEW: Filename generation for Data ---
     dataFileName = sprintf('Peters_HarmonicParticipation_w_%1.1f', w);
-    dataFileName = strrep(dataFileName, '.', 'p'); 
+    dataFileName = strrep(dataFileName, '.', 'p');
 
-    N_FFT = 4092;    
-    N_eps = 400;     
+    N_FFT = 4092;
+    N_eps = 400;
     eps_end = 5.0;
     if abs(w - 0.7) < 1e-6
-        eps_end = 3.5; 
+        eps_end = 3.5;
     end
     eps_vals = linspace(0, eps_end, N_eps)'; % Ensure column vector
     m_range = -3:3;
     colors = lines(length(m_range));
-    
+
     % Storage for results (Pre-allocate matrix for table creation)
     participation_matrix = zeros(N_eps, length(m_range));
-    
-    % --- Initialization for Mode Tracking (Continuation) ---
-    eta_initial_target = -w * Omega;   
-    eta_mode_prev = eta_initial_target;
-    x0 = eye(2); 
+
+    % --- Initialization  ---
+    x0 = eye(2);
+
     % -----------------------------------------------------------------------
     % --- Main Continuation Loop ---
     % -----------------------------------------------------------------------
@@ -75,41 +74,67 @@ for w = w_values
         epsilon = eps_vals(k);
         D_func = @(t) [0, 1; -(w_sq + epsilon*sin(Omega*t)), 0];
         sol_ode = ode45(@(t, x) reshape(D_func(t) * reshape(x, 2, 2), 4, 1), [0, T], reshape(x0, 4, 1));
-        Phi_T = reshape(deval(sol_ode, T), 2, 2); 
+        Phi_T = reshape(deval(sol_ode, T), 2, 2);
         [V, Lambda_mat] = eig(Phi_T);
         Lambda = diag(Lambda_mat);
         eta = log(Lambda) / T;
-        [~, mode_idx] = min(abs(eta - eta_mode_prev));
+        [~, mode_idx] = max(imag(eta));
         eta_mode = eta(mode_idx);
         v_mode = V(:, mode_idx);
-        eta_mode_prev = eta_mode; 
-        
+    
+        % Create an equidistantly spaced vector
         t_fft = linspace(0, T, N_FFT + 1);
         t_fft(end) = [];
+
+        % Interpolate the transition matrix over one period
         Phi_t_interp = deval(sol_ode, t_fft);
-        Q_t_disp = zeros(N_FFT, 1);
+
+        % Calculate the periodic eigenvector component A(t) (Eq. 11)
+        Q_t_disp = nan(1,N_FFT);
         for j = 1:N_FFT
             Phi_t = reshape(Phi_t_interp(:, j), 2, 2);
+
+            % Compute periodic part for the tracked mode:
+            % A(t) = Phi(t) * v * exp(-eta * t)
             A_t = Phi_t * v_mode * exp(-eta_mode * t_fft(j));
-            Q_t_disp(j) = A_t(1); 
+            Q_t_disp(j) = A_t(1); % Displacement component
         end
-        C = fftshift(fft(Q_t_disp) / N_FFT); 
+
+        % Perform FFT to determine normalized participation of branches m
+        C = fftshift(fft(Q_t_disp) / N_FFT);
+
+        % Create a centered frequency vector for the FFT results
+        % Since C is shifted (fftshift), freq_indices must cover [-N/2, N/2-1]
         freq_indices = (-N_FFT/2 : N_FFT/2 - 1);
+
+        % Convert indices to physical frequencies (cycles per unit time)
+        % Note: frequencies are in increments of 1/T
         frequencies = freq_indices / T;
+
+        % Pre-allocate storage for magnitudes of the selected harmonic branches
         harmonic_magnitudes_raw = zeros(size(m_range));
+
         for i = 1:length(m_range)
             m = m_range(i);
-            target_freq = m * (1 / T); 
+
+            % Define the target harmonic frequency based on Peters' n*Omega
+            % Target is m * (fundamental frequency), where fundamental = 1/T
+            target_freq = m * (1 / T);
+
+            % Locate the FFT bin closest to the theoretical harmonic branch
             [~, idx] = min(abs(frequencies - target_freq));
+
+            % Extract the magnitude |c_n| as defined in Eq. 17b
             harmonic_magnitudes_raw(i) = abs(C(idx));
         end
+
         total_magnitude_sum = sum(harmonic_magnitudes_raw);
         if total_magnitude_sum > 1e-12
             phi_m = harmonic_magnitudes_raw / total_magnitude_sum;
         else
             phi_m = zeros(size(harmonic_magnitudes_raw));
         end
-        
+
         participation_matrix(k, :) = phi_m;
     end
 
@@ -123,22 +148,26 @@ for w = w_values
             branch_names{i} = ['m_pos_', num2str(m_val)];
         end
     end
-    
+
     dataTable = table(eps_vals, 'VariableNames', {'Epsilon'});
     harmonicTable = array2table(participation_matrix, 'VariableNames', branch_names);
     finalData = [dataTable, harmonicTable];
-    
+
     writetable(finalData, fullfile(dDir, [dataFileName, '.xlsx']));
     save(fullfile(dDir, [dataFileName, '.mat']), 'finalData');
 
     % -----------------------------------------------------------------------
     % --- Plotting Section (Unchanged) ---
     % -----------------------------------------------------------------------
-    figure('Color','w','Units','pixels','Position',[200 200 900 400]);
+    aFig = figure('Color','w','Units','pixels'); %'Position',[200 200 900 400]
+    pos0 = get(0,'defaultFigurePosition');
+    aFig.Position = [pos0(1:2), 1.4*pos0(3), pos0(4)];
+
+
     hold on;
-    ode_str = '$\ddot{x} + (w^2 + \epsilon\sin(\Omega t)) x = 0$';
+    ode_str = '$\ddot{x}(t) + (w^2 + \epsilon\sin(\Omega t)) x(t) = 0$';
     w_str = num2str(w, '%1.1f');
-    new_title = ['Harmonic participation, ', ode_str, ', $w = ', w_str, '$ ($\Omega = 2\pi$ rad/s)'];
+    new_title = ['Harmonic participation: ', ode_str, ', $w = ', w_str, ', \Omega = 1$\,rad/s'];
     title(new_title, 'Interpreter', 'latex');
     xlabel('$\epsilon$', 'FontSize', 14, 'Interpreter', 'latex');
     ylabel('Modal Participation', 'FontSize', 14, 'Interpreter', 'latex');
@@ -149,7 +178,7 @@ for w = w_values
     for i = 1:length(m_range)
         m_val = m_range(i);
         phi_for_m = participation_matrix(:, i);
-        
+
         % Insert NaN to break the curve where the modal participation jumps
         big_jumps = find(abs(diff(phi_for_m)) > jump_threshold);
         eps_nan = eps_vals;
@@ -158,20 +187,22 @@ for w = w_values
             eps_nan = [eps_nan(1:jj); NaN; eps_nan(jj+1:end)];
             phi_nan = [phi_nan(1:jj); NaN; phi_nan(jj+1:end)];
         end
-        
+
         if m_val >= 0
             freq_normalized = omega0/Omega + m_val;
-            freq_str = sprintf('$m=%+d \\rightarrow \\omega/\\Omega \\approx %.1f$', m_val, freq_normalized);
+            %freq_str = sprintf('$m=%+d \\rightarrow \\omega/\\Omega \\approx %.1f$', m_val, freq_normalized);
+            freq_str = sprintf('$\\omega(m=%+d)/\\Omega \\approx %.1f$', m_val, freq_normalized);
         elseif m_val < 0
             m_abs = abs(m_val);
             freq_normalized = m_abs - omega0/Omega;
-            freq_str = sprintf('$m=%+d \\rightarrow \\omega/\\Omega \\approx %.1f$', m_val, freq_normalized);
+            %freq_str = sprintf('$m=%+d \\rightarrow \\omega/\\Omega \\approx %.1f$', m_val, freq_normalized);
+            freq_str = sprintf('$\\omega(m=%+d)/\\Omega \\approx %.1f$', m_val, freq_normalized);
         end
-        
+
         line_style = '-';
-        if useK 
+        if useK
             line_color = 'k';
-        else 
+        else
             line_color = colors(i,:);
         end
         plot(eps_nan, phi_nan, line_style, 'Color', line_color, 'LineWidth', 1.5, 'DisplayName', freq_str);
@@ -181,7 +212,7 @@ for w = w_values
     if ~useK
         legend('Location', 'northeastoutside', 'Interpreter', 'latex');
     end
-    
+
     % --- Annotate labels (Unchanged) ---
     if abs(w - 0.3) < 1e-6
         text(0.25, 0.8, '[+0]', 'Interpreter', 'latex', 'FontSize', 12, 'FontWeight', 'bold');

@@ -1,6 +1,6 @@
 % function Frequency_Peters
 % Floquet Frequency Plot for Mathieu's Equation (Figure 2 Appearance)
-% Separates branches according to the integer multiple 'm' used.
+% Separates branches according to the integer multiple 'k' used.
 %
 % Based on:
 % David A. Peters, Sydnie M. Lieb, Loren A. Ahaus
@@ -18,8 +18,8 @@ if ~isdir(fDirPeters) %#ok<ISDIR>
 end
 
 % --- NEW: Setup for Data Saving ---
-dDir = 'dataFolder'; % Folder for Excel and .mat files
-if ~isdir(dDir)
+dDir = fullfile('dataFolder','dataFolderPeters'); % Folder for Excel and .mat files
+if ~isdir(dDir) %#ok<ISDIR>
     mkdir(dDir)
 end
 
@@ -45,12 +45,12 @@ for w = w_values
     % Filename generation for saving the plot
     pngname = strrep(sprintf('PetersFrequency%s_w%1.1f',K,w),'.','dot');
     pngfile = fullfile(fDirPeters,[pngname,'.png']);
-    
+
     % --- NEW: Filename generation for Data ---
     % Explicitly mentions "Peters" and the value of w
     dataFileName = sprintf('Peters_Mathieu_ODE_w_%1.1f', w);
     dataFileName = strrep(dataFileName, '.', 'p'); % replaces '.' with 'p' for safety
-    
+
     % Determine the range of epsilon (x-axis limit)
     if abs(w - 0.3) < 0.001
         eps_end = 5;
@@ -64,7 +64,7 @@ for w = w_values
     end
     eps_vals = linspace(0, eps_end, eps_no)'; % Ensure column vector for table
     m_range = (-4:4); % Integer multiple range
-   
+
     % Structure to hold results, organized by branch 'm'
     results_by_branch = struct();
     for m = m_range
@@ -73,40 +73,68 @@ for w = w_values
         else
             field_name = ['m_', num2str(m)];
         end
-        results_by_branch.(field_name) = []; 
+        results_by_branch.(field_name) = [];
     end
-    
+
     % -----------------------------------------------------------------------
     % --- Floquet Exponent Calculation and Branch Separation ---
     % -----------------------------------------------------------------------
-    x0 = eye(2); 
+    x0 = eye(2); % Initial state matrix for Phi(0) = I
     for k = 1:length(eps_vals)
         epsilon = eps_vals(k);
+        % The state matrix D(t) for the ODE (Eq. 1):
+        % dot(x) + (w^2 + epsilon*sin(Omega*t)) * x = 0
+        % State-space form (Eq. 2): d{x}/dt = [D(t)]{x}
         D_func = @(t) [0, 1; -(w_sq + epsilon*sin(t)), 0];
+        % Solve for the Transition Matrix Phi(t): {x(t)}=[Phi(t)]{x(0)} (Eq. 7)
         [~, Phi_t] = ode45(@(t, x) reshape(D_func(t) * reshape(x, 2, 2), 4, 1), [0, T], reshape(x0, 4, 1));
-        Phi_T = reshape(Phi_t(end, :), 2, 2); 
-       
+        Phi_T = reshape(Phi_t(end, :), 2, 2);
+        % Calculate Floquet Exponents: eta = log(Lambda) / T, see Eq. 8
+        % [Phi(t)]=[A(t)][−exp(eta_j t)−][A(0)]^−1
+        % [A(0)]^−1[Phi(T)][A(0)]=[−Lambda_j−]=[−exp(eta_j T)−]
+
         Lambda = eig(Phi_T);
+        % Characteristic Exponent (Eq. 9)
         eta = log(Lambda) / T;
+        % The **real part** of eta (Re(eta)) determines stability.
+        % If Re(eta) > 0, the system is unstable (exponential growth).
+        % The **imaginary part** of eta (Im(eta)) determines the frequency (mu).
+
+        % Extract the Imaginary Part (normalized frequency, mu*Omega = Im(eta))
+        % omega/Omega = Im(eta)/Omega (where Omega=1, so omega = Im(eta))
         normalized_omega = imag(eta) / Omega;
-        basis_freq_r = normalized_omega(1);
-        
+
+
+        % --- Separate and Store Branches (m) ---
+
+        % 1. Find the basis frequency (principal value)
+        % This step effectively extracts the fractional part of the frequency,
+        % which corresponds to the base frequency component (omega0/Omega) (Eq. 10).
+        [~,idxEig] = sort(normalized_omega);
+        basis_freq_r = normalized_omega(idxEig == max(idxEig)); %only select the maximum value
+
+        % 2. Map this base frequency to all possible branches 'm'
+        % The physical frequency omega is defined by omega/Omega = m + mu.
+        % Here, 'm' represents the **integer multiple** of the excitation frequency Omega.
+        %
+        % - **Positive m (m>0):** Frequencies omega approx m*Omega + omega_0. These branches generally increase with m.
+        % - **Negative m (m<0):** Frequencies omega approx |m|*Omega - omega_0. These branches approach |m|*Omega from below (or above, depending on convention).
+
+        % This formula reconstructs the full frequency based on the integer m and basis frequency.
+        % For m >= 0: branch_freq = m*Omega + basis_freq_r.
+        % For m < 0: branch_freq = |m|*Omega - basis_freq_r.
         for m = m_range
-            if m==0
-                branch_freq = basis_freq_r;
-            else
-                branch_freq = abs(m) *Omega + sign(m) *basis_freq_r;
-            end
-            
-            if m < 0
-                field_name = ['m_neg_', num2str(abs(m))];
-            else
+            if m >= 0
+                branch_freq = m*Omega + basis_freq_r;
                 field_name = ['m_', num2str(m)];
+            else
+                branch_freq = abs(m) *Omega - basis_freq_r;
+                field_name = ['m_neg_', num2str(abs(m))];
             end
             results_by_branch.(field_name) = [results_by_branch.(field_name); branch_freq];
         end
     end
-    
+
     % --- NEW: Create Table for Export ---
     % The table includes Epsilon and all calculated branches
     dataTable = table(eps_vals, 'VariableNames', {'Epsilon'});
@@ -119,7 +147,7 @@ for w = w_values
         % Add each branch as a new column in the table
         dataTable.(field_name) = results_by_branch.(field_name);
     end
-    
+
     % --- NEW: Save Excel and .mat files ---
     writetable(dataTable, fullfile(dDir, [dataFileName, '.xlsx']));
     save(fullfile(dDir, [dataFileName, '.mat']), 'dataTable');
@@ -127,16 +155,20 @@ for w = w_values
     % -----------------------------------------------------------------------
     % --- Plotting (Original Code Continues) ---
     % -----------------------------------------------------------------------
-    figure;
+    aFig = figure;
+    pos0 = get(0,'defaultFigurePosition');
+    aFig.Position = [pos0(1:2), 1.4*pos0(3), pos0(4)];
+    
     hold on;
     color_map = lines;
     color_map = [color_map(1:7,:);0*ones(1,3);0.5*ones(1,3)];
-    ode_str = '$\dot{x} + (w^2 + \epsilon\sin(\Omega t)) x = 0$';
+    ode_str = '$\ddot{x}(t) + (w^2 + \epsilon\sin(\Omega t)) x(t) = 0$';
     w_str = num2str(w, '%1.1f');
-    new_title = {'Frequency vs. $\epsilon$, ', [ode_str, ', $w = ', w_str, '$ ($\Omega = 2\pi$ rad/s)']};
-    title(new_title, 'FontSize', 16, 'Interpreter', 'latex');
-    xlabel('$\epsilon$', 'FontSize', 14, 'Interpreter', 'latex');
-    ylabel('Frequency ($\omega/\Omega$)', 'FontSize', 14, 'Interpreter', 'latex');
+    %new_title = {['Frequency\,vs.\,$\epsilon$: ', ode_str], ['$w = ', w_str, '$, $\Omega = 1$\,rad/s']};
+    new_title = ['Frequency: ', ode_str, ', $w = ', w_str, '$, $\Omega = 1$\,rad/s'];
+    title(new_title, 'FontSize', 14, 'Interpreter', 'latex');
+    xlabel('$\epsilon$', 'FontSize', 14, 'Interpreter', 'latex'); %Multiplier of periodic coefficient 
+    ylabel('Frequency $\omega/\Omega$', 'FontSize', 14, 'Interpreter', 'latex');
     idx = 1;
     for m = m_range
         if m < 0
@@ -144,14 +176,14 @@ for w = w_values
         else
             field_name = ['m_', num2str(m)];
         end
-        
+
         if m >= 0
             freq_normalized = omega0/Omega + m;
-            freq_str = sprintf('$m=%+d \\rightarrow \\omega/\\Omega \\approx %.1f$', m, freq_normalized);
+            freq_str = sprintf('$\\omega(m=%+d)/\\Omega \\approx %.1f$', m, freq_normalized);
         elseif m < 0
             m_abs = abs(m);
             freq_normalized = m_abs - omega0/Omega;
-            freq_str = sprintf('$m=%+d \\rightarrow \\omega/\\Omega \\approx %.1f$', m, freq_normalized);
+            freq_str = sprintf('$\\omega(m=%+d)/\\Omega \\approx %.1f$', m, freq_normalized);
         end
 
         y_data = results_by_branch.(field_name);
@@ -166,19 +198,20 @@ for w = w_values
     grid on;
     set(gca, 'TickLabelInterpreter', 'latex');
     if ~useK
-        legend('Location', 'northeastoutside', 'Interpreter', 'latex');
+        %legend('Location', 'southoutside', 'Interpreter', 'latex','NumColumns',3,'FontSize', 11);
+        legend('Location', 'northeastoutside', 'Interpreter', 'latex','FontSize', 11);
     end
-   
+
     % --- Branch Label Annotations (Original Code) ---
     hold on;
-    text(0.05, 0.08, '[+0]', 'FontSize', 10, 'Interpreter', 'latex'); 
-    text(0.05, 0.55, '[-1]', 'FontSize', 10, 'Interpreter', 'latex'); 
-    text(0.05, 1.08, '[+1]', 'FontSize', 10, 'Interpreter', 'latex'); 
-    text(0.05, 1.55, '[-2]', 'FontSize', 10, 'Interpreter', 'latex'); 
-    text(0.05, 2.08, '[+2]', 'FontSize', 10, 'Interpreter', 'latex'); 
-    text(0.05, 2.55, '[-3]', 'FontSize', 10, 'Interpreter', 'latex'); 
-    text(0.05, 3.08, '[+3]', 'FontSize', 10, 'Interpreter', 'latex'); 
-    text(0.05, 3.55, '[-4]', 'FontSize', 10, 'Interpreter', 'latex'); 
+    text(0.05, 0.08, '[+0]', 'FontSize', 10, 'Interpreter', 'latex');
+    text(0.05, 0.55, '[-1]', 'FontSize', 10, 'Interpreter', 'latex');
+    text(0.05, 1.08, '[+1]', 'FontSize', 10, 'Interpreter', 'latex');
+    text(0.05, 1.55, '[-2]', 'FontSize', 10, 'Interpreter', 'latex');
+    text(0.05, 2.08, '[+2]', 'FontSize', 10, 'Interpreter', 'latex');
+    text(0.05, 2.55, '[-3]', 'FontSize', 10, 'Interpreter', 'latex');
+    text(0.05, 3.08, '[+3]', 'FontSize', 10, 'Interpreter', 'latex');
+    text(0.05, 3.55, '[-4]', 'FontSize', 10, 'Interpreter', 'latex');
     text(1.2, 0.35, '[-1/+0]', 'FontSize', 10, 'Interpreter', 'latex');
     text(1.2, 1.35, '[-2/+1]', 'FontSize', 10, 'Interpreter', 'latex');
     text(1.2, 2.35, '[-3/+2]', 'FontSize', 10, 'Interpreter', 'latex');
