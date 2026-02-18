@@ -23,17 +23,23 @@ if ~isdir(dDir)
     mkdir(dDir)
 end
 
-% Plotting style selection
-K = 'ColoredLines';
-% K = 'BlackLines';
-useK = strcmp(K,'BlackLines');
 % -----------------------------------------------------------------------
 % --- Parameters and Initialization ---
 % -----------------------------------------------------------------------
 Omega = 1;       % Fundamental angular frequency (Normalized: Omega = 1)
 T = 2*pi / Omega;  % Period of the parametric coefficient (T = 2*pi)
 % Outer loop for different unperturbed frequencies (w)
-w_values =[0.3, 0.5, 0.7];
+w_values = [0.3, 0.5, 0.7];
+
+% Figure position for changing the position
+pos0 = get(0,'defaultFigurePosition'); 
+ode_str = '$\ddot{x}(t) + (w^2 + \epsilon\sin(\Omega t)) x(t) = 0$';
+
+% Plotting style selection
+K = 'ColoredLines';
+% K = 'BlackLines';
+useK = strcmp(K,'BlackLines');
+
 for w = w_values
     w_sq = w^2;
     % --- Basis Frequency omega0 Calculation (Peters' Convention - Eq. 10) ---
@@ -81,7 +87,7 @@ for w = w_values
         [~, mode_idx] = max(imag(eta));
         eta_mode = eta(mode_idx);
         v_mode = V(:, mode_idx);
-    
+
         % Create an equidistantly spaced vector
         t_fft = linspace(0, T, N_FFT + 1);
         t_fft(end) = [];
@@ -138,7 +144,7 @@ for w = w_values
         participation_matrix(k, :) = phi_m;
     end
 
-    % --- NEW: Create Table and Export Data ---
+    % --- Create Table and export Data ---
     branch_names = cell(1, length(m_range));
     for i = 1:length(m_range)
         m_val = m_range(i);
@@ -157,15 +163,13 @@ for w = w_values
     save(fullfile(dDir, [dataFileName, '.mat']), 'finalData');
 
     % -----------------------------------------------------------------------
-    % --- Plotting Section (Unchanged) ---
+    % --- Plotting Section  ---
     % -----------------------------------------------------------------------
-    aFig = figure('Color','w','Units','pixels'); %'Position',[200 200 900 400]
-    pos0 = get(0,'defaultFigurePosition');
+    aFig = figure('Color','w','Units','pixels');
     aFig.Position = [pos0(1:2), 1.4*pos0(3), pos0(4)];
 
-
     hold on;
-    ode_str = '$\ddot{x}(t) + (w^2 + \epsilon\sin(\Omega t)) x(t) = 0$';
+    
     w_str = num2str(w, '%1.1f');
     new_title = ['Harmonic participation: ', ode_str, ', $w = ', w_str, ', \Omega = 1$\,rad/s'];
     title(new_title, 'Interpreter', 'latex');
@@ -175,11 +179,15 @@ for w = w_values
     set(gca, 'TickLabelInterpreter', 'latex', 'FontSize', 12);
 
     jump_threshold = 0.2;
+    line_color = 'k';
+    line_style = '-';
+
     for i = 1:length(m_range)
         m_val = m_range(i);
         phi_for_m = participation_matrix(:, i);
 
         % Insert NaN to break the curve where the modal participation jumps
+        % this is used for w = 0.5
         big_jumps = find(abs(diff(phi_for_m)) > jump_threshold);
         eps_nan = eps_vals;
         phi_nan = phi_for_m;
@@ -187,25 +195,20 @@ for w = w_values
             eps_nan = [eps_nan(1:jj); NaN; eps_nan(jj+1:end)];
             phi_nan = [phi_nan(1:jj); NaN; phi_nan(jj+1:end)];
         end
-
+        
+        % Create the legend entry for each m
         if m_val >= 0
             freq_normalized = omega0/Omega + m_val;
-            %freq_str = sprintf('$m=%+d \\rightarrow \\omega/\\Omega \\approx %.1f$', m_val, freq_normalized);
-            freq_str = sprintf('$\\omega(m=%+d)/\\Omega \\approx %.1f$', m_val, freq_normalized);
         elseif m_val < 0
             m_abs = abs(m_val);
             freq_normalized = m_abs - omega0/Omega;
-            %freq_str = sprintf('$m=%+d \\rightarrow \\omega/\\Omega \\approx %.1f$', m_val, freq_normalized);
-            freq_str = sprintf('$\\omega(m=%+d)/\\Omega \\approx %.1f$', m_val, freq_normalized);
         end
+        freq_str = sprintf('$\\omega(m=%+d)/\\Omega \\approx %.1f$', m_val, freq_normalized);
 
-        line_style = '-';
-        if useK
-            line_color = 'k';
-        else
-            line_color = colors(i,:);
-        end
+        % Set plotting styles and plot
+        if ~useK, line_color = colors(i,:); end
         plot(eps_nan, phi_nan, line_style, 'Color', line_color, 'LineWidth', 1.5, 'DisplayName', freq_str);
+
     end
     axis([0 eps_end 0 1.0]);
     set(gca, 'YTick', 0:0.2:1);
@@ -238,3 +241,7 @@ for w = w_values
     hold off;
     print(pngfile, '-dpng')
 end
+
+
+%% Unused code
+%freq_str = sprintf('$m=%+d \\rightarrow \\omega/\\Omega \\approx %.1f$', m_val, freq_normalized);
