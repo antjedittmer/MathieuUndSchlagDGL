@@ -65,7 +65,10 @@ for g_val = gamma_list
     end
 
     % --- Plotting ---
-    figure('Color','w','Name', sprintf('Gamma %.1f', gamma), 'Position',[100 100 1100 600]);
+    aFig = figure('Color','w','Name', sprintf('Gamma %.1f', gamma));
+    pos0 = get(0,'defaultFigurePosition'); 
+    aFig.Position = [pos0(1:2), 1.4*pos0(3), pos0(4)];
+   
     hold on;
     % Define the color map: first 7 from 'lines', then black, then gray
     base_colors = lines(7);
@@ -130,8 +133,10 @@ for g_val = gamma_list
         text(0.6, 2.80, '$[-3]$', 'Interpreter', 'latex', 'FontSize', 12, 'FontWeight', 'bold');
         text(0.4, 3.22, '$[+3]$', 'Interpreter', 'latex', 'FontSize', 12, 'FontWeight', 'bold');
     end
+    
     % --- File Naming and Saving ---
     gStr = strrep(num2str(gamma), '.', 'p');
     pngname = sprintf('PetersRotorFlapping_p1p0_gamma%s', gStr);
     pngfile = fullfile(fDirPeters,[pngname,'.png']);
+    print(pngfile, '-dpng')
 end

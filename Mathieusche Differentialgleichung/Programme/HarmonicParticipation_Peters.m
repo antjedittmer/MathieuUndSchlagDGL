@@ -31,10 +31,6 @@ T = 2*pi / Omega;  % Period of the parametric coefficient (T = 2*pi)
 % Outer loop for different unperturbed frequencies (w)
 w_values = [0.3, 0.5, 0.7];
 
-% Figure position for changing the position
-pos0 = get(0,'defaultFigurePosition'); 
-ode_str = '$\ddot{x}(t) + (w^2 + \epsilon\sin(\Omega t)) x(t) = 0$';
-
 % Plotting style selection
 K = 'ColoredLines';
 % K = 'BlackLines';
@@ -120,18 +116,18 @@ for w = w_values
         % Pre-allocate storage for magnitudes of the selected harmonic branches
         harmonic_magnitudes_raw = zeros(size(m_range));
 
-        for i = 1:length(m_range)
-            m = m_range(i);
+        for idx = 1:length(m_range)
+            m = m_range(idx);
 
             % Define the target harmonic frequency based on Peters' n*Omega
             % Target is m * (fundamental frequency), where fundamental = 1/T
             target_freq = m * (1 / T);
 
             % Locate the FFT bin closest to the theoretical harmonic branch
-            [~, idx] = min(abs(frequencies - target_freq));
+            [~, idxMin] = min(abs(frequencies - target_freq));
 
             % Extract the magnitude |c_n| as defined in Eq. 17b
-            harmonic_magnitudes_raw(i) = abs(C(idx));
+            harmonic_magnitudes_raw(idx) = abs(C(idxMin));
         end
 
         total_magnitude_sum = sum(harmonic_magnitudes_raw);
@@ -146,12 +142,12 @@ for w = w_values
 
     % --- Create Table and export Data ---
     branch_names = cell(1, length(m_range));
-    for i = 1:length(m_range)
-        m_val = m_range(i);
+    for idx = 1:length(m_range)
+        m_val = m_range(idx);
         if m_val < 0
-            branch_names{i} = ['m_neg_', num2str(abs(m_val))];
+            branch_names{idx} = ['m_neg_', num2str(abs(m_val))];
         else
-            branch_names{i} = ['m_pos_', num2str(m_val)];
+            branch_names{idx} = ['m_pos_', num2str(m_val)];
         end
     end
 
@@ -166,10 +162,11 @@ for w = w_values
     % --- Plotting Section  ---
     % -----------------------------------------------------------------------
     aFig = figure('Color','w','Units','pixels');
+    pos0 = get(0,'defaultFigurePosition'); 
     aFig.Position = [pos0(1:2), 1.4*pos0(3), pos0(4)];
-
+        
     hold on;
-    
+    ode_str = '$\ddot{x}(t) + (w^2 + \epsilon\sin(\Omega t)) x(t) = 0$';
     w_str = num2str(w, '%1.1f');
     new_title = ['Harmonic participation: ', ode_str, ', $w = ', w_str, ', \Omega = 1$\,rad/s'];
     title(new_title, 'Interpreter', 'latex');
@@ -182,9 +179,9 @@ for w = w_values
     line_color = 'k';
     line_style = '-';
 
-    for i = 1:length(m_range)
-        m_val = m_range(i);
-        phi_for_m = participation_matrix(:, i);
+    for idx = 1:length(m_range)
+        m_val = m_range(idx);
+        phi_for_m = participation_matrix(:, idx);
 
         % Insert NaN to break the curve where the modal participation jumps
         % this is used for w = 0.5
@@ -206,7 +203,7 @@ for w = w_values
         freq_str = sprintf('$\\omega(m=%+d)/\\Omega \\approx %.1f$', m_val, freq_normalized);
 
         % Set plotting styles and plot
-        if ~useK, line_color = colors(i,:); end
+        if ~useK, line_color = colors(idx,:); end
         plot(eps_nan, phi_nan, line_style, 'Color', line_color, 'LineWidth', 1.5, 'DisplayName', freq_str);
 
     end
