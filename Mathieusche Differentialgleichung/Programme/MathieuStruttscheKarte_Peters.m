@@ -8,8 +8,8 @@ clc; clear; close all;
 
 % --- Setup and Parameters ---
 
-loadMat = 1; % Load mat-file if results with the same D are already available
-SW = 0.05;    % Step width for nu_0^2 and nu_C^2 sweep
+loadMat = 0; % Load mat-file if results with the same D are already available
+SW = 0.1;    % Step width for nu_0^2 and nu_C^2 sweep
 unt0 = 0;    % Lower bound for nu_0^2 (x-axis)
 untC = 0;    % Lower bound for nu_C^2 (y-axis)
 ob0  = 9;    % Upper bound for nu_0^2
@@ -42,6 +42,7 @@ DVec = 0.15;   % Damping coefficient D
 t0    = 0.0;
 Omega = 1;          % Normalized excitation frequency
 T     = 2*pi/Omega; % Period of excitation
+x0 = eye(2);
 
 for dIdx = 1:length(DVec)
     D = DVec(dIdx);
@@ -71,7 +72,7 @@ for dIdx = 1:length(DVec)
     oidx = 1;
     m_direct = zeros(lenNuDiag + 1,1);
     m_new = zeros(lenNuDiag + 1,1);
-    cnt = 1;
+    m_bubble = zeros(lenNuDiag, 1);
 
     if exist(fileName,'file') == 2 && loadMat == 1
         load(fileName,'CharEx','plotwertstabil');
@@ -83,32 +84,17 @@ for dIdx = 1:length(DVec)
             for nu_C2 = nuC2_vals
                 options = odeset('RelTol',1e-10,'AbsTol',1e-12);
 
-                % Monodromy matrix
-                Monodromie = zeros(Nz);
-                for k = 1:Nz
-                    sol = ode45(@(psi,x)MathieuDGLsubfun(psi,x,D,nu_02,nu_C2), [t0,T], Diagonal(:,k), options);
-                    Monodromie(:,k)        = deval(sol,T);
 
+                % Solve the Monodromy Matrix
+                ode_mat = @(t, x) [0, 1; -(nu_02 + nu_C2*cos(Omega*t)), -2*D] * reshape(x, 2, 2);
+                [~, sol_raw] = ode45(@(t, x) reshape(ode_mat(t, x), 4, 1), [0, T], reshape(x0, 4, 1));
+                Monodromie = reshape(sol_raw(end, :), 2, 2);
 
-                    % 3. Extract the winding number from the FIRST basis vector (k=1)
-                    if k == 1 && abs(nu_C2 - nu_02) < SW/2
-                        % Sample the trajectory over the period
-                        psi_eval = linspace(t0, T, 500);
-                        z_path = deval(sol, psi_eval); % z_path(1,:) is x_dot, z_path(2,:) is x
-
-                        % Calculate polar angle in the (x, x_dot) plane
-                        % Note: atan2(y, x) -> atan2(x_dot, x)
-                        % This corresponds to atan2(z_path(1,:), z_path(2,:))
-                        theta = unwrap(atan2(z_path(1,:), z_path(2,:)));
-
-                        % Total accumulated phase change
-                        total_delta_theta = abs(theta(end) - theta(1));
-
-                        % m is the count of half-rotations (0.5 per 180 degrees)
-                        m_direct(oidx) = round(total_delta_theta / pi) * 0.5;
-                    end
-
-                end
+                x_path     = sol_raw(:, 1); % Position (State 1)
+                x_dot_path = sol_raw(:, 2); % Velocity (State 2)
+                theta = unwrap(atan2(x_dot_path, x_path));
+                total_delta_theta = abs(theta(end) - theta(1));
+                m_direct(oidx) = round(total_delta_theta / pi) * 0.5;
 
                 % Characteristic multipliers
                 eP = eig(Monodromie);
@@ -118,32 +104,48 @@ for dIdx = 1:length(DVec)
                     Eig.Real = 1/T * log(abs(eP));
                     Eig.Imag = 1/T * atan(imag(eP)./real(eP));
 
+
                     % continuity correction
                     [Eig,buffer] = correctImagValues(Eig,buffer);
 
                     % Peters-style physical frequencies (here just stacked)
                     PhysFreq = [Eig.ImagCorrected; Eig.ImagCorrectedNeg];
 
-                    % sort by real part
+                    % sort by real part according to imaginary part
                     Eig_Re = Eig.Real;
-                    [~, idx_sort] = sort(Eig_Re);
+                    % [~, idx_sort] = sort(Eig_Re);
+                    [~,idx_sort] = sort(Eig.Imag,'descend');
 
                     % store: nu02, nuC2, Re_s1, Re_s2, Im_s1, Im_s2
                     CharEx(oidx,:) = [nu_02, nu_C2, Eig_Re(idx_sort)', (PhysFreq)'];
-                    oidx = oidx + 1;
 
                     % Check if we are in a "bubble": Real parts are not identical
                     isBubble = abs(Eig_Re(1) - Eig_Re(2)) > eps;
 
+                    % 'Bubble counting
+                    if oidx == 1 % The first vector value is left at 0
+                        % Do nothing
+                    elseif isBubble && ~wasBubble
+                        % If "bubble" opens, allow m to follow the ODE winding number
+                        m_bubble(oidx) = m_bubble(oidx-1) + 0.5;
+                    else
+                        % Otherwise leave m at last value
+                        m_bubble(oidx) = m_bubble(oidx-1);
+                    end
+                    wasBubble = isBubble;
+
                     if isBubble
                         % If "bubble", allow m to follow the ODE winding number
                         m_new(oidx) = m_direct(oidx-1);
-                        cnt = cnt +1;
+                        %cnt = cnt +1;
                     else
                         % If not inside a bubble, lock m to its entry value
                         % This prevents the 'early jump' during the resonance
                         m_new(oidx) = m_new(oidx - 1);
                     end
+
+                    oidx = oidx + 1;
+
                 end
 
                 % --- Stability map ---
@@ -195,7 +197,7 @@ for dIdx = 1:length(DVec)
     plot(xachse,CharEx(:,4),'LineWidth', 1.5, 'Color', cl(2,:), 'DisplayName', '$\sigma_2$');
     yline(0, 'k--');
     title('Real Part (Damping) $\sigma = Re(s) = \frac{1}{T}\ln(|\mu|)$','interpreter','latex','FontSize', fs+2);
-    ylabel('Damping Exponent $\sigma$ $\rm{[-]}$','interpreter','latex','FontSize', fs+2);
+    ylabel('Re($s_R$) = $\sigma$ $\rm{[-]}$','interpreter','latex','FontSize', fs+2);
     grid on;
     legend('Location','NorthEast', 'Interpreter','latex');
 
@@ -229,9 +231,10 @@ for dIdx = 1:length(DVec)
     plot(xachse,CharExTable.m_new + CharExTable.Freq_s1_norm,'LineWidth', 1.3, 'Color', cl(2,:),...
         'LineStyle',':','DisplayName','$\omega$ with $m$ from basis vector')
     plot(xachse, omega, 'k--', 'LineWidth', 1.0, 'DisplayName', '$\sqrt{\nu_c^2}$');
-    title('Imaginary Part (test function)','interpreter','latex','FontSize', fs+2)
-    xlabel('Parameter $\nu_0^2$ $\rm{[-]}$','interpreter','latex','FontSize', fs+2);
-    ylabel('Im$(s_R)$ $\rm{[-]}$','interpreter','latex','FontSize', fs+2);
+    title('Imaginary Part (Frequency) $\omega = Im(s) = \frac{1}{T} (\arg(\lambda) + 2\pi m)$',...
+        'interpreter','latex','FontSize', fs+2);
+    ylabel('Im($s_R$) = $\omega$ $\rm{[-]}$','interpreter','latex','FontSize', fs+2);
+    ylabel('Im$(s_R)= \omega $ $\rm{[-]}$','interpreter','latex','FontSize', fs+2);
 
     legend('Location','SouthEast', 'Interpreter','latex');
 
@@ -244,31 +247,26 @@ for dIdx = 1:length(DVec)
     print(pngname, '-dpng')
 end
 
+% figure; plot(xachse, m_bubble, xachse, CharExTable.m_new,'--');
+%ylabel('winding number m ()')
+
 % =========================================================================
 % AUXILIARY FUNCTIONS
 % =========================================================================
 
-function PhysFreq = petersPhysicalFrequency(Eig_Im_Raw, ~, omega0, Omega)
-% petersPhysicalFrequency: picks integer k so Im(s)+k*Omega is closest to omega0.
-k_range  = -5:5;
-PhysFreq = zeros(size(Eig_Im_Raw));
-for i = 1:length(Eig_Im_Raw)
-    nu_imag_raw      = Eig_Im_Raw(i);
-    test_frequencies = nu_imag_raw + k_range * Omega;
-    target_freq      = omega0;
-    [~, k_best_idx]  = min(abs(test_frequencies - target_freq));
-    PhysFreq(i)      = test_frequencies(k_best_idx);
-end
-end
+% function PhysFreq = petersPhysicalFrequency(Eig_Im_Raw, ~, omega0, Omega)
+% % petersPhysicalFrequency: picks integer k so Im(s)+k*Omega is closest to omega0.
+% k_range  = -5:5;
+% PhysFreq = zeros(size(Eig_Im_Raw));
+% for i = 1:length(Eig_Im_Raw)
+%     nu_imag_raw      = Eig_Im_Raw(i);
+%     test_frequencies = nu_imag_raw + k_range * Omega;
+%     target_freq      = omega0;
+%     [~, k_best_idx]  = min(abs(test_frequencies - target_freq));
+%     PhysFreq(i)      = test_frequencies(k_best_idx);
+% end
+% end
 
-function dxdpsi = MathieuDGLsubfun(psi, x, D, nu_02, nu_C2)
-% phi'' + 2D*phi' + (nu_0^2 + nu_C^2*cos(psi))*phi = 0
-phi     = x(1);
-phi_dot = x(2);
-K_psi   = nu_02 + nu_C2 * cos(psi);
-phi_ddot = -2 * D * phi_dot - K_psi * phi;
-dxdpsi  = [phi_dot; phi_ddot];
-end
 
 function  [Eig, buffer] = correctImagValues(Eig, buffer)
 % correctImagValues: makes Imag parts continuous in parameter sweep.
