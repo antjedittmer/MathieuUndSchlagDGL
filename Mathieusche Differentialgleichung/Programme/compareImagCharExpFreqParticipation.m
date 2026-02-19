@@ -23,7 +23,7 @@ x0 = eye(2);
 dDirA = fullfile('dataFolder', 'dataFolder_Arnold_Classic_Symmetric_test');
 
 %% === 1. LOAD ARNOLD REFERENCE DATA ===
-matA = 'STRUTTscheKarte_D1dot5e-01_SW1dot0e-01_unt0.mat';
+matA = 'STRUTTscheKarte_D1dot5e-01_SW5dot0e-02_unt0.mat';
 S_A = load(fullfile(dDirA, matA));
 nu_A = S_A.CharEx(:,1);
 ReA1 = S_A.CharEx(:,3);
@@ -229,3 +229,9 @@ legend boxoff
 pngname = sprintf('real_vs_imaginary_exponents_Mathieu_Peters.png');
 pngfile = fullfile(fDirPeters, pngname);
 saveas(fig1, pngfile);
+
+[pks,locs] = findpeaks(composite_freq, 'MinPeakProminence', 0.01);
+ figure; plot(nu_vals,composite_freq, nu_vals(locs),pks,'*')
+[dpks,dlocs] = findpeaks(diff(composite_freq), 'MinPeakProminence', 0.01);
+hold on;
+plot(nu_vals(dlocs),composite_freq(dlocs),'o')
