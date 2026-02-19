@@ -8,8 +8,8 @@ clc; clear; close all;
 
 % --- Setup and Parameters ---
 
-loadMat = 1; % Load mat-file if results with the same D are already available
-SW = 0.05;    % Step width for nu_0^2 and nu_C^2 sweep
+loadMat = 0; % Load mat-file if results with the same D are already available
+SW = 0.1;    % Step width for nu_0^2 and nu_C^2 sweep
 unt0 = 0;    % Lower bound for nu_0^2 (x-axis)
 untC = 0;    % Lower bound for nu_C^2 (y-axis)
 ob0  = 9;    % Upper bound for nu_0^2
@@ -114,7 +114,7 @@ for dIdx = 1:length(DVec)
 
                     % sort by real part
                     Eig_Re = Eig.Real;
-                    [~, idx_sort] = sort(Eig_Re);
+                    [~, idx_sort] = sort(Eig.Imag,'descend');
 
                     % store: nu02, nuC2, Re_s1, Re_s2, Im_s1, Im_s2
                     CharEx(oidx,:) = [nu_02, nu_C2, Eig_Re(idx_sort)', (PhysFreq)'];

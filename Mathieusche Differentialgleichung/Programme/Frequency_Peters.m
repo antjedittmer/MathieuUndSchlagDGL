@@ -42,10 +42,8 @@ for w = w_values
         basis_freq = Omega - basis_freq;
     end
     omega0 = basis_freq;
-    % Filename generation for saving the plot
-    pngname = strrep(sprintf('PetersFrequency%s_w%1.1f',K,w),'.','dot');
-    pngfile = fullfile(fDirPeters,[pngname,'.png']);
 
+   
     % --- NEW: Filename generation for Data ---
     % Explicitly mentions "Peters" and the value of w
     dataFileName = sprintf('Peters_Mathieu_ODE_w_%1.1f', w);
@@ -103,7 +101,6 @@ for w = w_values
         % Extract the Imaginary Part (normalized frequency, mu*Omega = Im(eta))
         % omega/Omega = Im(eta)/Omega (where Omega=1, so omega = Im(eta))
         normalized_omega = imag(eta) / Omega;
-
 
         % --- Separate and Store Branches (m) ---
 
@@ -171,17 +168,14 @@ for w = w_values
     ylabel('Frequency $\omega/\Omega$', 'FontSize', 14, 'Interpreter', 'latex');
     idx = 1;
     for m = m_range
-        if m < 0
-            field_name = ['m_neg_', num2str(abs(m))];
-        else
-            field_name = ['m_', num2str(m)];
-        end
-
+      
         if m >= 0
+            field_name = ['m_', num2str(m)];
             freq_normalized = omega0/Omega + m;
             freq_str = sprintf('$\\omega(m=%+d)/\\Omega \\approx %.1f$', m, freq_normalized);
         elseif m < 0
             m_abs = abs(m);
+            field_name = ['m_neg_', num2str(abs(m))];
             freq_normalized = m_abs - omega0/Omega;
             freq_str = sprintf('$\\omega(m=%+d)/\\Omega \\approx %.1f$', m, freq_normalized);
         end
@@ -229,6 +223,10 @@ for w = w_values
         text(3.0, 3.20, '[-3/+3]', 'FontSize', 10, 'Interpreter', 'latex');
         text(3.0, 4.20, '[-4/+4]', 'FontSize', 10, 'Interpreter', 'latex');
     end
+
+   % Filename generation for saving the plot
+    pngname = strrep(sprintf('PetersFrequency%s_w%1.1f',K,w),'.','dot');
+    pngfile = fullfile(fDirPeters,[pngname,'.png']);
     print(pngfile, '-dpng')
 
 end

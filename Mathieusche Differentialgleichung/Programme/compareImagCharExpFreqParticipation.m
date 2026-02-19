@@ -71,6 +71,9 @@ total_mag_all = zeros(length(nu_vals), 1);
 eta_prev = 1i * sqrt(nu_vals(1)); 
 
 %% === MAIN COMPUTATION LOOP ===
+
+m_bubble = zeros(length(nu_vals), 1);
+
 for k = 1:length(nu_vals)
     nu = nu_vals(k);
     
@@ -82,7 +85,12 @@ for k = 1:length(nu_vals)
     % Extract Floquet Exponents (Peters method)
     [V, L_mat] = eig(Phi_T);
     eta_vals = log(diag(L_mat)) / T;
-    [~, idx] = min(abs(eta_vals - eta_prev)); 
+
+    [~, idx2] = sort(imag(eta_vals),'descend');
+    idx = idx2(1);
+
+     %[~, idx] = min(abs(eta_vals - eta_prev)); 
+    
     %idx = 2;
     eta_mode = eta_vals(idx);
     v_mode = V(:, idx);
@@ -95,6 +103,8 @@ for k = 1:length(nu_vals)
     t_fft = linspace(0, T, N_FFT+1); t_fft(end) = [];
     sol_obj = ode45(@(t, x) reshape(ode_mat(t, x), 4, 1), [0, T], reshape(x0, 4, 1));
     Phi_t_steps = deval(sol_obj, t_fft);
+    %Monodromie = reshape(sol_raw(end, :), 2, 2);
+
     
     Q_t = zeros(N_FFT, 1);
     for j = 1:N_FFT
