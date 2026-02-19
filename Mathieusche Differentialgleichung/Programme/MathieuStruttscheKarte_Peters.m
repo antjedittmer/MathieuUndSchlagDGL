@@ -76,7 +76,7 @@ for dIdx = 1:length(DVec)
     x0 = eye(2);
 
     if exist(fileName,'file') == 2 && loadMat == 1
-        load(fileName,'CharEx','plotwertstabil');
+        load(fileName,'CharEx','plotwertstabil','m_*');
     end
     if ~exist('CharEx','var') || size(CharEx,2) ~= 8
         disp(['Calculating Strutt Chart (Arnold/Peters Style) for D = ', num2str(D), '...']);
@@ -136,8 +136,6 @@ for dIdx = 1:length(DVec)
 
                     oidx = oidx + 1;
 
-
-
                     if isBubble
                         % If "bubble", allow m to follow the ODE winding number
                         m_new(oidx) = m_direct(oidx-1);
@@ -159,7 +157,7 @@ for dIdx = 1:length(DVec)
         CharEx = [CharEx, m_direct(2:end), m_new(2:end)]; %#ok<AGROW>
         % remove zero rows
         plotwertstabil = plotwertstabil(any(plotwertstabil,2),:);
-        save(fileName,'CharEx','plotwertstabil');
+        save(fileName,'CharEx','plotwertstabil','m_*');
     end
 
     % --- Excel export ---
@@ -247,6 +245,15 @@ for dIdx = 1:length(DVec)
     pngname = fullfile(fDirPeters, strrep(matName, '.mat', '_Exponents'));
     print(pngname, '-dpng')
 end
+
+figure; plot(xachse, m_bubble, xachse, CharExTable.m_new,'--',...
+    xachse,m_direct(1:end-1),'k:','LineWidth',1.3);
+ylabel('winding number m [-]','interpreter','latex','FontSize', fs+2)
+xlabel('Parameter $\nu_0^2$ $\rm{[-]}$','interpreter','latex','FontSize', fs+2);
+
+legend('bubble counting','Transform. matrix angles with bubbles',...
+    'Transition matrix angles','interpreter','latex','FontSize', fs+2, ...
+    'Location','southeast')
 
 % =========================================================================
 % AUXILIARY FUNCTIONS
