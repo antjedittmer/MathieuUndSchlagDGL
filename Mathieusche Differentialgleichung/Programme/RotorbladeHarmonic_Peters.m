@@ -1,6 +1,8 @@
+% Combined Harmonic Participation for Rotor-Blade Flapping
+% Covers Peters' formulation for gamma = 12.0 and gamma = 9.6
 clear; clc; close all;
 
-% --- Setup for Figure Saving ---
+% --- Setup for Saving ---
 fDir = 'figureFolder'; % Folder for figures
 if ~isdir(fDir) %#ok<ISDIR>
     mkdir(fDir)
@@ -11,178 +13,163 @@ if ~isdir(fDirPeters) %#ok<ISDIR>
 end
 
 % --- NEW: Setup for Data Saving ---
-dDir = fullfile('dataFolder','dataFolderPeters'); % Folder for Excel and .mat files
-if ~isdir(dDir) %#ok<ISDIR>
+dDir = 'dataFolder'; % Folder for Excel and .mat files
+if ~isdir(dDir)
     mkdir(dDir)
 end
 
-% --- Parameters from Peters (2011) ---
-p = 1.0;            % Natural flap frequency
-gamma = 9.6; %12.0;       % Lock number
-N_mu = 200;
-mu_vals = linspace(0, 2.5, N_mu);
+% --- Global Parameters ---
+p_sq   = 1.0^2;
+p      = 1.0;
+Omega  = 1;
+T      = 2*pi / Omega;
+mu_end = 3.0;
+mu_no  = 400;
+m_range = -4:4;
+mu_vals = linspace(0, mu_end, mu_no);
 
-m_range = -3:3;
+% --- Array of Gamma values to process ---
+gamma_list = [12.0, 9.6];
 
-Omega = 1;       % Fundamental angular frequency (Normalized: Omega = 1)
-T = 2*pi / Omega;  % Period of the parametric coefficient (T = 2*pi)
+for g_idx = 1:length(gamma_list)
+    gamma = gamma_list(g_idx);
+    fprintf('Processing: gamma = %.1f...\n', gamma);
 
-% Storage for the specific branches shown in Figure 3
-% Storage for results (Pre-allocate matrix for table creation)
-participation_matrix = zeros(N_mu, length(m_range));
+    participation_matrix = zeros(length(mu_vals), length(m_range));
 
+    % --- Main Loop over advance ratio (mu) ---
+    for k = 1:length(mu_vals)
+        mu = mu_vals(k);
 
-% Figure position for changing the position
-pos0 = get(0,'defaultFigurePosition');
-ode_str = 'Flap-wise';
+        % State-space matrix D(t)
+        D_func = @(t) [0, 1;
+            -( p_sq + (gamma/8)*( (4*mu/3)*cos(t) + (mu^2)*sin(2*t) ) ), ...
+            -( (gamma/8)*(1 + (4*mu/3)*sin(t)) )];
 
-for k = 1:N_mu
-    mu = mu_vals(k);
+        if k == 1
+            eta_mode_prev = -p * gamma;
+        end
 
-    % Corrected periodic coefficients for Rotor Flapping
-    C_t = @(t) (gamma/8) * (1 + (4/3)*mu*sin(t));
-    K_t = @(t) p^2 + (gamma/8) * ((4/3)*mu*cos(t) + (mu^2)*sin(2*t));
+        % Solve Floquet transition matrix
+        x0  = eye(2);
+        rhs = @(t, x) reshape(D_func(t) * reshape(x, 2, 2), 4, 1);
+        opts = odeset('RelTol',1e-8,'AbsTol',1e-10);
+        sol_ode = ode45(rhs, [0, T], reshape(x0, 4, 1), opts);
 
-    % State-space: x' = [0 1; -K -C]x
-    A_func = @(t) [0, 1; -K_t(t), -C_t(t)];
+        Phi_T = reshape(deval(sol_ode, T), 2, 2);
+        [V, L] = eig(Phi_T);
+        L = diag(L);
 
-    % 1. Compute Monodromy Matrix
-    [~, X] = ode45(@(t,x) reshape(A_func(t)*reshape(x,2,2),4,1), [0 2*pi], reshape(eye(2),4,1));
-    Phi_T = reshape(X(end,:), 2, 2);
+        % Identify correct mode
+        eta_all = log(L) / T;
+        [~, mode_idx] = min(abs(eta_all - eta_mode_prev));
 
-    % 2. Floquet Analysis
-    [V, L] = eig(Phi_T);
-    % Usually we track the lead flapping mode
-    [~, idx] = max(abs(diag(L)));
-    lambda = L(idx,idx);
-    v0 = V(:,idx);
+        eta_mode = eta_all(mode_idx);
+        v_mode   = V(:, mode_idx);
+        eta_mode_prev = eta_mode;
 
-    % Exponent (Principal value)
-    eta = log(lambda)/(2*pi);
+        % Periodic Modulator A(t) reconstruction
+        N_fft  = 1024;
+        t_fft  = linspace(0, T, N_fft+1); t_fft(end) = [];
+        A_t_disp = zeros(N_fft, 1);
 
-    % 3. Periodic Part Q(t) = exp(-eta*t) * Phi(t) * v0
-    n_pts = 256;
-    t = linspace(0, 2*pi, n_pts+1); t(end) = [];
-    [~, X_path] = ode45(@(t,x) reshape(A_func(t)*reshape(x,2,2),4,1), t, reshape(eye(2),4,1));
+        for j = 1:N_fft
+            Phi_t = reshape(deval(sol_ode, t_fft(j)), 2, 2);
+            modulator = Phi_t * v_mode * exp(-eta_mode * t_fft(j));
+            A_t_disp(j) = modulator(1);
+        end
 
-    q_vals = zeros(n_pts, 1);
-    for j = 1:n_pts
-        Phi_t = reshape(X_path(j,:), 2, 2);
-        q_vec = exp(-eta*t(j)) * (Phi_t * v0);
-        q_vals(j) = q_vec(1); % Focus on displacement (beta)
+        % FFT to get harmonic strengths
+        C_coeffs = fftshift(fft(A_t_disp) / N_fft);
+        freq_indices = (-N_fft/2 : N_fft/2 - 1);
+        freqs = freq_indices / T;
+
+        harmonic_magnitudes_raw = zeros(size(m_range));
+        for i = 1:length(m_range)
+            m = m_range(i);
+            target_freq = m * (1/T);
+            [~, idx] = min(abs(freqs - target_freq));
+            harmonic_magnitudes_raw(i) = abs(C_coeffs(idx));
+        end
+
+        % Normalize
+        total_sum = sum(harmonic_magnitudes_raw);
+        if total_sum > 1e-12
+            participation_matrix(k, :) = harmonic_magnitudes_raw / total_sum;
+        end
     end
 
-    % Perform FFT to determine normalized participation of branches m
-    c = fftshift(fft(q_vals))/n_pts;
+    % --- Plotting for current gamma ---
+    fig = figure('Color','w','Position', [100 100 1200 600]);
+    hold on;
+    color_map = lines(length(m_range));
+    color_map = [color_map(1:7,:); 0 0 0; 0.5 0.5 0.5];
 
-    % Create a centered frequency vector for the FFT results
-    % Since C is shifted (fftshift), freq_indices must cover [-N/2, N/2-1]
-    freqs = (-n_pts/2 : n_pts/2 - 1);
+    jump_threshold = 0.2;
+    colors = lines(length(m_range));
 
-    % Convert indices to physical frequencies (cycles per unit time)
-    % Note: frequencies are in increments of 1/T
-    frequencies = freqs;
+    for i = 1:length(m_range)
+        phi_for_m = participation_matrix(:, i);
+        % Handle discontinuities for clean plotting
+        big_jumps = find(abs(diff(phi_for_m)) > jump_threshold);
+        mu_nan  = mu_vals(:);
+        phi_nan = phi_for_m(:);
+        for jj = flip(big_jumps')
+            mu_nan  = [mu_nan(1:jj);  NaN; mu_nan(jj+1:end)];
+            phi_nan = [phi_nan(1:jj); NaN; phi_nan(jj+1:end)];
+        end
 
-    % Pre-allocate storage for magnitudes of the selected harmonic branches
-    harmonic_magnitudes_raw = zeros(size(m_range));
-
-    for idx = 1:length(m_range)
-        m = m_range(idx);
-
-        % Define the target harmonic frequency based on Peters' n*Omega
-        % Target is m * (fundamental frequency), where fundamental = 1/T
-        target_freq = m;
-
-        % Locate the FFT bin closest to the theoretical harmonic branch
-        [~, idxMin] = min(abs(frequencies - target_freq));
-
-        % Extract the magnitude |c_n| as defined in Eq. 17b
-        harmonic_magnitudes_raw(idx) = abs(c(idxMin));
+        m_val = m_range(i);
+        plot(mu_nan, phi_nan, '-', 'Color', color_map(i,:), 'LineWidth', 2, ...
+            'DisplayName', sprintf('$m = %+d$', m_val));
     end
 
-    total_magnitude_sum = sum(harmonic_magnitudes_raw);
-    if total_magnitude_sum > 1e-12
-        phi_m = harmonic_magnitudes_raw / total_magnitude_sum;
-    else
-        phi_m = zeros(size(harmonic_magnitudes_raw));
+    % --- Apply Gamma-Specific Annotations ---
+    if gamma == 12.0
+        text(1.51, 0.05, '$[-4/+4]$',    'Interpreter', 'latex', 'FontSize', 14, 'FontWeight', 'bold');
+        text(1.22, 0.09, '$[-3/+3]$',    'Interpreter', 'latex', 'FontSize', 14, 'FontWeight', 'bold');
+        text(1.19, 0.15, '$[-2/+2]$',    'Interpreter', 'latex', 'FontSize', 14, 'FontWeight', 'bold');
+        text(1.6,  0.2, '$[-1/+1]$',     'Interpreter', 'latex', 'FontSize', 14, 'FontWeight', 'bold');
+        text(0.15, 0.26, '$[+0]$',       'Interpreter', 'latex', 'FontSize', 14, 'FontWeight', 'bold');
+        text(0.6,  0.03, '$[-4/+3]$',    'Interpreter', 'latex', 'FontSize', 12, 'FontWeight', 'bold');
+        text(0.5,  0.07, '$[-3/+2]$',    'Interpreter', 'latex', 'FontSize', 12, 'FontWeight', 'bold');
+        text(0.5,  0.20, '$[-2/+1]$',    'Interpreter', 'latex', 'FontSize', 12, 'FontWeight', 'bold');
+        text(0.60, 0.31, '$[-1/+0]$',    'Interpreter', 'latex', 'FontSize', 12, 'FontWeight', 'bold');
+        text(0.21, 0.46, '$[-1]$',       'Interpreter', 'latex', 'FontSize', 12, 'FontWeight', 'bold');
+    elseif gamma == 9.6
+        text(1.5, 0.04, '$[-4/+4]$', 'Interpreter', 'latex', 'FontSize', 14, 'FontWeight', 'bold');
+        text(1.4, 0.08, '$[-3/+3]$', 'Interpreter', 'latex', 'FontSize', 14, 'FontWeight', 'bold');
+        text(1.7, 0.17, '$[-2/+2]$', 'Interpreter', 'latex', 'FontSize', 14, 'FontWeight', 'bold');
+        text(1.5, 0.23, '$[-1/+1]$', 'Interpreter', 'latex', 'FontSize', 14, 'FontWeight', 'bold');
+        text(0.4, 0.2, '$[+0]$', 'Interpreter', 'latex', 'FontSize', 14, 'FontWeight', 'bold');
+        text(1.9, 0.12, '$[+0]$', 'Interpreter', 'latex', 'FontSize', 14, 'FontWeight', 'bold');
+        text(0.6, 0.45, '$[-1]$', 'Interpreter', 'latex', 'FontSize', 12, 'FontWeight', 'bold');
+        text(0.7, 0.23, '$[+1]$', 'Interpreter', 'latex', 'FontSize', 12, 'FontWeight', 'bold');
+        text(0.3, 0.07, '$[+1]$', 'Interpreter', 'latex', 'FontSize', 12, 'FontWeight', 'bold');
+        text(0.6, 0.14, '$[-2]$', 'Interpreter', 'latex', 'FontSize', 12, 'FontWeight', 'bold');
+        text(0.7, 0.09, '$[+2]$', 'Interpreter', 'latex', 'FontSize', 12, 'FontWeight', 'bold');
     end
 
-    participation_matrix(k, :) = phi_m;
+    % Formatting
+    title(sprintf('Harmonic Participation (Rotor Flapping: $p=1.0, \\gamma=%.1f$)', gamma), ...
+        'Interpreter', 'latex', 'FontSize', 14);
+    xlabel('$\mu$', 'Interpreter', 'latex', 'FontSize', 12);
+    ylabel('Modal Participation', 'Interpreter', 'latex', 'FontSize', 12);
+    grid on; box on;
+    legend('Location', 'northeastoutside', 'Interpreter', 'latex');
+    axis([0 mu_end 0 0.5]);
+    set(gca, 'TickLabelInterpreter', 'latex');
 
+    % --- File Naming and Saving ---
+    gStr = strrep(num2str(gamma), '.', 'p');
+    pngname = sprintf('PetersRotorParticipation_p1p0_gamma%s', gStr);
+
+    print(fig, fullfile(fDirPeters, [pngname, '.png']), '-dpng', '-r300');
+
+    % Save Data
+    data_table = [(0:length(mu_vals)-1)', mu_vals(:), participation_matrix];
+    writematrix(data_table, fullfile(dDir, [pngname, '.xlsx']));
+    save(fullfile(dDir, [pngname, '.mat']), 'mu_vals', 'participation_matrix', 'm_range');
+
+    fprintf('Done with gamma = %.1f\n\n', gamma);
 end
-
-% -----------------------------------------------------------------------
-% --- Plotting Section  ---
-% -----------------------------------------------------------------------
-aFig = figure('Color','w','Units','pixels');
-aFig.Position = [pos0(1:2), 1.4*pos0(3), pos0(4)];
-
-hold on;
-
-new_title = ['Harmonic participations, rotor blade flapping, $p=1.0, \gamma=' num2str(gamma) '$']; % ['Harmonic participation: ', ode_str, ', $w = ', w_str, ', \Omega = 1$\,rad/s'];
-title(new_title, 'Interpreter', 'latex');
-xlabel('$\mu$', 'FontSize', 14, 'Interpreter', 'latex');
-ylabel('Modal Participation', 'FontSize', 14, 'Interpreter', 'latex');
-grid on;
-set(gca, 'TickLabelInterpreter', 'latex', 'FontSize', 12);
-
-jump_threshold = 0.2;
-line_color = 'k';
-line_style = '-';
-useK = 0;
-colors = lines;
-
-for i = 1:length(m_range)
-    m_val = m_range(i);
-    phi_for_m = participation_matrix(:, i);
-
-    % Insert NaN to break the curve where the modal participation jumps
-    % this is used for w = 0.5
-    big_jumps = find(abs(diff(phi_for_m)) > jump_threshold);
-    eps_nan = mu_vals;
-    phi_nan = phi_for_m;
-    for jj = flip(big_jumps')
-        eps_nan = [eps_nan(1:jj); NaN; eps_nan(jj+1:end)];
-        phi_nan = [phi_nan(1:jj); NaN; phi_nan(jj+1:end)];
-    end
-
-    % Create the legend entry for each m
-    % if m_val >= 0
-    %     freq_normalized = omega0/Omega + m_val;
-    % elseif m_val < 0
-    %     m_abs = abs(m_val);
-    %     freq_normalized = m_abs - omega0/Omega;
-    % end
-    %freq_str = sprintf('$\\omega(m=%+d)/\\Omega \\approx %.1f$', m_val, freq_normalized);
-    freq_str = sprintf('$ m=%+d $', m_val);
-
-    % Set plotting styles and plot
-    if ~useK, line_color = colors(i,:); end
-    plot(eps_nan, phi_nan, line_style, 'Color', line_color, 'LineWidth', 1.5, 'DisplayName', freq_str);
-
-end
-
-
-% Add Legend
-legend('Location', 'northeastoutside', 'Interpreter', 'latex');
-
-% --- File Naming and Saving ---
-gStr = strrep(num2str(gamma), '.', 'p');
-pngname = sprintf('PetersHarmonicparticipationRotorFlapping_p1p0_gamma%s', gStr);
-pngfile = fullfile(fDirPeters,[pngname,'.png']);
-print(pngfile, '-dpng')
-
-
-% % --- Plotting to match JAHS 2011 Figure 3 ---
-% figure('Color','w'); hold on; grid on;
-% % In the paper, curves are often solid. We use thresholds to show the 'splits'.
-% % The [-1] and [0] branches start separate then merge.
-% plot(mu_vals, results.m1, 'k', 'LineWidth', 1.5);
-% plot(mu_vals, results.p0, 'k', 'LineWidth', 1.5);
-% plot(mu_vals, results.comb21, 'k--', 'LineWidth', 1.2); % Higher order sidebands
-%
-% % Styling
-% xlabel('Advance Ratio \mu');
-% ylabel('Harmonic Participation \phi_n');
-% title('Replication of Peters (2011) Fig. 10');
-% axis([0 2.5 0 0.6]);
