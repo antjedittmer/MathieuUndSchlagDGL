@@ -104,7 +104,6 @@ for k = 1:length(nu_vals)
     sol_obj = ode45(@(t, x) reshape(ode_mat(t, x), 4, 1), [0, T], reshape(x0, 4, 1));
     Phi_t_steps = deval(sol_obj, t_fft);
     %Monodromie = reshape(sol_raw(end, :), 2, 2);
-
     
     Q_t = zeros(N_FFT, 1);
     for j = 1:N_FFT
