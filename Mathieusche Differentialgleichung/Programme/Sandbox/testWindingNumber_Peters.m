@@ -1,134 +1,90 @@
 clc; clear; close all;
 
 %% Load and assign parameters
-load('participation_data_and_M','participation_data', 'm_bubble','frequency_imag', 'nu_vals', 'growth_rate','composite_freq')
-% omega = CharEx(:,1) .^ 0.5;
-% nu2 = CharEx(:,1);
-% vec = 0: 0.5:2.5;
-% im_matrix = CharEx(:,5) + vec .* ones(size(CharEx(:,5)));
+load('participation_data_and_M','participation_data', 'm_bubble', ...
+    'nu_vals', 'composite_freq')
 
-%% Calculate characteristic value closest to 
 
-% Get the peaks of the composite_freq which is calculated from the frequncy
-% branches and their modal participlation
-[pksC,locsC] = findpeaks(composite_freq);
-idx_m = [false; diff(m_bubble)~= 0];
 
-% [sorted,idxSort] = sort(participation_data','descend');
-% sorted2 = sorted(:,1:2);
+%% 1. Process Modal Participation (Vectorized)
 
-% Look at the two largest branches to aoid jumps if two branches are nearly
-% equal
-sortedIndex = zeros(length(participation_data),2);
-sortedIndexI = zeros(length(participation_data),2);
-for idx = 1: length(participation_data)
+% Define thresholds and constants
+gap_threshold = 0.01;
+peak_prominence = 0.05;
+allModes = 0;
 
-    [sorted,idxSort] = sort(participation_data(idx,:),'descend');
+% Sort all rows descending to find dominant branches
+[sortedM, idxSortM] = sort(participation_data, 2, 'descend');
 
-    isNearlyEqual = sorted(1) - sorted(2) < 0.01;
+% Initialize output matrices
+sortedIndex = sortedM(:, 1:2);
+%sortedIndexI = sort(idxSortM(:, 1:2), 2); % Standardize ID order
 
-   % if isNearlyEqual
-        sortedIndex(idx,:) = sorted(1:2);
-        sortedIndexI(idx,:) = sort(idxSort(1:2));
-    % else
-    %     sortedIndex(idx,1) = sorted(1);
-    %     sortedIndexI(idx,1) = idxSort(1);
-    % end
-    % 
-
+% Mask rows where one mode clearly dominates (the 'else' case)
+if allModes == 1
+    isNotNearlyEqual = (sortedIndex(:,1) - sortedIndex(:,2)) >= gap_threshold;
+    sortedIndex(isNotNearlyEqual, 2)  = 0;
+    %sortedIndexI(isNotNearlyEqual, 2) = 0;
 end
 
-% Get the differenc between these sorted branches ( 1 by 500 vector)
-diffSorted = diff(sortedIndex');
+%% 2. Identify Branch Transitions
+% Get peaks of the frequency plot (Peters' composite frequency)
+[pksC, locsC] = findpeaks(composite_freq);
 
-%Get the difference of that to be able to find the peaks
-diffDiffSorted = [0,diff(diffSorted)];
-[pksD,locsD] = findpeaks(diffDiffSorted,'MinPeakProminence',0.05);
+% Find transition peaks from participation gap dynamics
+% We use the derivative of the difference between top modes to find shifts
+diffSorted = [0; diff(sortedIndex(:,2) - sortedIndex(:,1))];
+[~, locsD] = findpeaks(diffSorted, 'MinPeakProminence', peak_prominence);
 
+% Detect where bubble counting (m_bubble) changes for comparison
+idx_m_change = [false; diff(m_bubble) ~= 0];
 
-% Combine information from the frequncy peak and the modal participation
-tmp = zeros(size(m_bubble));
-% First shift winding number from 
-tmp(locsD(1)) = 0.5; 
-tmp(locsC) = 0.5;
-m_modpart = cumsum(tmp);
+%% 3. Generate Winding Number from Modal Participation
+m_modpart_raw = zeros(size(m_bubble));
+m_modpart_raw(locsD(1)) = 0.5; % Trigger first shift from participation
+m_modpart_raw(locsC)    = 0.5; % Trigger subsequent shifts from freq peaks
+m_modpart = cumsum(m_modpart_raw);
 
+%% 4. Visualization
+pos0 = get(0,'defaultFigurePosition');
 
-% Calculate the smoothed Peters winding number
-[maxval, idxval ]= max(participation_data'); %#ok<UDIM>
-[pks,locs] = findpeaks(maxval);
-[pksNeg,locsNeg] = findpeaks(-maxval);
-m_range = -4:4;
-strLeg = arrayfun(@(m) sprintf('m=%d', m_range(m)), 1:length(m_range), 'UniformOutput', false);
-
-%egend(arrayfun(@(m) sprintf('m=%d', m_range(m)), 1:length(m_range), 'UniformOutput', false), 'Location','northeastoutside');
 cl = lines;
-figure;
-subplot(4,1,1)
-plot(nu_vals,composite_freq);
-hold on; plot(nu_vals(locsC),pksC,'k*');
-plot(nu_vals(idx_m),composite_freq(idx_m),'ro');
-plot(nu_vals(locsD),composite_freq(locsD),'bo','MarkerSize',14);
-axis tight;
-grid on;
+fig4 = figure('Name', 'Floquet Branch Tracking Analysis');
+fig4.Position = [pos0(1), pos0(2)- 0.15*pos0(4), pos0(3), 1.4*pos0(4)];
 
-ylabel('Frequency \omega')
+
+% Subplot 1: Frequency and Peak Detection
+subplot(4,1,1)
+plot(nu_vals, composite_freq, 'Color', cl(1,:), 'DisplayName', '\omega (Peters)');
+hold on;
+plot(nu_vals(locsC), pksC, 'ko', 'MarkerFaceColor', 'k', 'DisplayName', 'Freq Peaks');
+plot(nu_vals(idx_m_change), composite_freq(idx_m_change), 'ro', 'DisplayName', 'm-bubble change');
+ylabel('Frequency \omega'); grid on; axis tight;
+legend('Location', 'best');
+
+% Subplot 2: Raw Modal Participation
 subplot(4,1,2)
 plot(nu_vals, participation_data);
-hold on; plot(nu_vals, maxval,'r--','LineWidth',1.3)
+hold on;
+plot(nu_vals, max(participation_data, [], 2), 'r--', 'LineWidth', 1.3);
+plot(nu_vals, sortedIndex(:,2), 'b--', 'LineWidth', 1.3);
+ylabel('Mod. Part.'); grid on; axis tight;
 
-%plot(locs,pks,'*')
-%plot(nu_vals(locsNeg),-pksNeg,'ko')
-ylabel('mod part.')
-axis tight;
-grid on;
-
+% Subplot 3: Participation Gap & Transition Logic
 subplot(4,1,3)
-plot(nu_vals,sortedIndex(:,1),'color',cl(1,:));
+plot(nu_vals, sortedIndex(:,1),'r--', 'DisplayName', 'Mode 1');
 hold on;
-plot(nu_vals,sortedIndex(:,2),'--','LineWidth',1.3,'color',cl(2,:));
-plot(nu_vals,diffDiffSorted,'k');
-grid on;
-axis tight;
+plot(nu_vals, sortedIndex(:,2), 'b--', 'DisplayName', 'Mode 2');
+plot(nu_vals, diffSorted, 'k', 'DisplayName', '\Delta (Mode 1 - Mode 2)');
+plot(nu_vals(locsD), diffSorted(locsD),  'ko', 'MarkerFaceColor', 'k', 'DisplayName', '\Delta Peaks');
+ylabel('Branch Dynamics'); grid on; axis tight;
+legend('Location', 'best');
 
+% Subplot 4: Winding Number Comparison
 subplot(4,1,4)
-plot(nu_vals,m_bubble,'color',cl(1,:));
+plot(nu_vals, m_bubble, 'Color', cl(1,:), 'LineWidth', 1.3, 'DisplayName', 'm bubble');
 hold on;
-plot(nu_vals, m_modpart,'--','color',cl(2,:))
-ylabel('m bubble counting')
-
-
-axis tight;
-grid on;
-
-
-
-xlabel('Amplification factor \nu')
-
-
-%% Unused code, keep for later
-% figure;
-% plot(nu_vals,idxval)
-% ylabel('max value participation')
-
-% Look at the two largest branches to aoid jumps if two branches are nearly
-% % equal
-% sortedIndex = zeros(length(participation_data),2);
-% sortedIndexI = zeros(length(participation_data),2);
-% for idx = 1: length(participation_data)
-% 
-%     [sorted,idxSort] = sort(participation_data(idx,:),'descend');
-% 
-%     isNearlyEqual = sorted(1) - sorted(2) < 0.01;
-% 
-%    % if isNearlyEqual
-%         sortedIndex(idx,:) = sorted(1:2);
-%         sortedIndexI(idx,:) = sort(idxSort(1:2));
-%     % else
-%     %     sortedIndex(idx,1) = sorted(1);
-%     %     sortedIndexI(idx,1) = idxSort(1);
-%     % end
-%     % 
-
-end
-
+plot(nu_vals, m_modpart, '--', 'Color', cl(2,:), 'LineWidth', 1.3, 'DisplayName', 'm Peters');
+ylabel('Winding No. m'); grid on; axis tight;
+xlabel('Amplification factor \nu');
+legend('Location', 'best');
