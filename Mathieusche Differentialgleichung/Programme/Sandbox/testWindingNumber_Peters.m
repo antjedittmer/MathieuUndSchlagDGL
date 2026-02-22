@@ -4,8 +4,6 @@ clc; clear; close all;
 load('participation_data_and_M','participation_data', 'm_bubble', ...
     'nu_vals', 'composite_freq')
 
-
-
 %% 1. Process Modal Participation (Vectorized)
 
 % Define thresholds and constants
@@ -78,7 +76,7 @@ plot(nu_vals, sortedIndex(:,2), 'b--', 'DisplayName', 'Mode 2');
 plot(nu_vals, diffSorted, 'k', 'DisplayName', '\Delta (Mode 1 - Mode 2)');
 plot(nu_vals(locsD), diffSorted(locsD),  'ko', 'MarkerFaceColor', 'k', 'DisplayName', '\Delta Peaks');
 ylabel('Branch Dynamics'); grid on; axis tight;
-legend('Location', 'best');
+legend('Location', 'best','NumColumns',2);
 
 % Subplot 4: Winding Number Comparison
 subplot(4,1,4)
