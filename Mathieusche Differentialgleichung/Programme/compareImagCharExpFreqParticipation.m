@@ -22,10 +22,13 @@ useOldData = 0;
 
 
 %% === 1. LOAD ARNOLD REFERENCE DATA ===
+
 dDirA = fullfile('dataFolder', 'dataFolder_Arnold_Classic_Symmetric_test');
 matA = 'STRUTTscheKarte_D1dot5e-01_SW1dot0e-01_unt0.mat';
 filenamStrutt = fullfile(dDirA, matA);
 useOldData = useOldData == 1 && exist(filenamStrutt,'file') == 2;
+
+%% ==== 1.a PLOT CHARACTERISTIC EXPONENT === 
 pos0 = get(0,'defaultFigurePosition');
 
 if useOldData == 1
@@ -257,7 +260,7 @@ set(findall(gcf,'-property','FontSize'),'FontSize',12)
 cb = colorbar;
 cb.Label.String = 'Amplication factor \nu_c^2';
 
-lgd = legend('Location','southoutside','Orientation','horizontal','FontSize',12);
+legend('Location','southoutside','Orientation','horizontal','FontSize',12);
 legend boxoff
 
 pngname = sprintf('real_vs_imaginary_exponents_Mathieu_Peters.png');
@@ -422,3 +425,4 @@ buffer.Neg = min(tmpNeg,buffer.Neg); % Minimum speichern
 % Anmerkung: hier kammen leider andere Werte raus als bei atanh
 % Eig.ImagAngle = 1/T * angle(imag(eP)./real(eP));
 end
+
