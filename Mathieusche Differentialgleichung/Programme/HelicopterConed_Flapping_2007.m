@@ -3,7 +3,7 @@ clear; clc; close all;
 
 % Toggle: 1 = 6x6 Cyclic Analysis | 0 = 3x3 Coning Analysis
 isSixVec = [0,1];
-pos0 = get(0,"defaultFigurePosition");
+pos0 = get(0,'defaultFigurePosition');
 
 for idxSix = 1:2
     isSix = isSixVec(idxSix);
