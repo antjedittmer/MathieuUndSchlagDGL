@@ -378,7 +378,11 @@ hold on;
 plot(nu_vals, m_modpart, '--', 'Color', cl(2,:), 'LineWidth', 1.3, 'DisplayName', 'm Peters');
 ylabel('Winding No. m'); grid on; axis tight;
 xlabel('Amplification factor \nu');
-legend('Location', 'best');
+legend('Location', 'best'); 
+
+pngname = sprintf('winding_Mathieu_Arnold.png');
+    pngfile = fullfile(fDirPeters, pngname);
+    saveas(fig4, pngfile);
 
 function  [Eig, buffer] = correctImagValues(Eig, buffer)
 % correctImagValues korrigiert die Imaginaerwerte fuer stetigen Verlauf

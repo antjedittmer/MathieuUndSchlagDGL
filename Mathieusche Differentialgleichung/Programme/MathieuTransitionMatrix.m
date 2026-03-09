@@ -16,7 +16,7 @@ else
 end
 
 nu_02 = 5;
-nu_C2 = 5;
+nu_C2 = nu_02;
 
 t0 = 0.0;
 T = 2*pi;
