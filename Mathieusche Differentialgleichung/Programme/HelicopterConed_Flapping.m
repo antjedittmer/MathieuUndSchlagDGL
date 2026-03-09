@@ -2,7 +2,7 @@
 clear; clc; close all;
 
 % Toggle: 1 = 6x6 Cyclic Analysis | 0 = 3x3 Coning Analysis
-isSixVec = [1,0];
+isSixVec = [0,1];
 for idxSix = 1:2
     isSix = isSixVec(idxSix);
 
@@ -79,7 +79,7 @@ for idxSix = 1:2
     end
 
     % --- Section 3 Expansion: Detailed Eigenvalue Map ---
-    figure(1);
+    figure(idxSix*10);
     clf; hold on;
     colors_ev = lines; % 6 distinct colors for the 6 modes
     h = zeros(size(V, 2),1);
