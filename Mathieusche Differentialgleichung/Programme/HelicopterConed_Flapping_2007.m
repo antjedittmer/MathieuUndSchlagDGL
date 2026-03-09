@@ -81,7 +81,7 @@ for idxSix = 1:2
     end
 
     % --- Section 3 Expansion: Detailed Eigenvalue Map ---
-    figure;
+      figure(idxSix*10);
     set(gcf,'position',[pos0(1:2) 1.5 *pos0(3), pos0(4)])
     clf; hold on;
     colors_ev = lines; % 6 distinct colors for the 6 modes
