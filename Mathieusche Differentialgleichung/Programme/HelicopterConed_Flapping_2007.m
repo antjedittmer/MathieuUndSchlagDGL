@@ -2,10 +2,10 @@
 clear; clc; close all;
 
 % Toggle: 1 = 6x6 Cyclic Analysis | 0 = 3x3 Coning Analysis
-isSixVec = [0,1];
+isSixVec = 0; %[0,1];
 pos0 = get(0,'defaultFigurePosition');
 
-for idxSix = 1:2
+for idxSix = 1:length(isSixVec)
     isSix = isSixVec(idxSix);
 
     %% 1. Parameters
@@ -64,6 +64,15 @@ for idxSix = 1:2
     [V, D] = eig(A);
     ev = diag(D);
 
+    if isSix == 1
+        A_flap_only = A(1:4, 1:4); % Coupled flapping states
+        A_inf_only  = A(5:6, 5:6); % Coupled inflow states
+        ev_dec = [eig(A_flap_only); eig(A_inf_only)];
+    else
+        % For 3x3 coning: rows 1-2 are flapping, row 3 is inflow
+        ev_dec = [eig(A(1:2, 1:2)); A(3,3)];
+    end
+
     % Custom Normalization:
     % Max element magnitude = 1, Phase of that element = 0 deg
     V_norm = zeros(size(V));
@@ -81,11 +90,12 @@ for idxSix = 1:2
     end
 
     % --- Section 3 Expansion: Detailed Eigenvalue Map ---
-      figure(idxSix*10);
-    set(gcf,'position',[pos0(1:2) 1.5 *pos0(3), pos0(4)])
+    figure(idxSix*10);
+    %set(gcf,'position',[pos0(1:2) 1.5 *pos0(3), pos0(4)])
     clf; hold on;
     colors_ev = lines; % 6 distinct colors for the 6 modes
     h = zeros(size(V, 2),1);
+
     for k = 1:size(V, 2)
         % Calculate Magnitude and Phase of the Eigenvalue itself
         ev_mag = abs(ev(k));
@@ -97,14 +107,25 @@ for idxSix = 1:2
 
         % Construct legend string with Mag and Phase
         ev_labels{k} = sprintf('Mode %d: %.2f + %.2fi (Mag: %.2f, Ph: %.1f°)', ...
-            k, real(ev(k)), imag(ev(k)), ev_mag, ev_phase);
+            k, real(ev(k)), imag(ev(k)), ev_mag, ev_phase); %#ok<*SAGROW>
     end
+
     grid on; %xline(0, 'k-', 'LineWidth', 2); yline(0, 'k-', 'LineWidth', 2);
     xlabel('Real Part (Damping \sigma)');
     ylabel('Imaginary Part (Frequency \omega)');
-    title('System Eigenvalues: Stability & Frequency Analysis');
-    legend(h, ev_labels, 'Location', 'bestoutside', 'FontSize', 9, 'FontName', 'Consolas');
-    axis tight;
+
+    % title('System Eigenvalues: Stability & Frequency Analysis');
+
+    % Capture the handle for the decoupled plot
+    h_dec = plot(real(ev_dec), imag(ev_dec), 'kx', 'MarkerSize', 10, 'LineWidth', 1.5);
+
+    % 2. Combine the handles and the labels into one legend call
+    % [h; h_dec] merges the 6 mode handles with the 1 decoupled handle
+    % [ev_labels, {'Decoupled Eig. Val.'}] merges the two cell arrays
+    legend([h; h_dec], [ev_labels, {'Decoupled Eig. Val.'}], ...
+        'Location', 'northoutside', 'FontSize', 9, 'FontName', 'Consolas');
+
+    %axis tight;
     hold off;
 
     %% 4. Time Simulation (Step Inputs)
@@ -124,11 +145,40 @@ for idxSix = 1:2
         [y2, t2] = lsim(sys, u2, t);
     else
         % 3x3 coning
-        u = ones(size(t));
+        u = ones(size(t))*deg2rad;
 
         sys_coned = ss(A, B, eye(3), 0);
         [y, t_out] = lsim(sys_coned, u, t);
     end
+
+
+    % Create a decoupled version of A by zeroing out coupling blocks
+    A_decoupled = A;
+    if isSix == 1
+        % 6x6 Cyclic Analysis: States [beta_dot_1c/s; beta_1c/s; lambda_1c/s]
+        A_decoupled(1:4, 5:6) = 0; % Remove inflow effect on flapping [cite: 57-89]
+        A_decoupled(5:6, 1:4) = 0; % Remove flapping effect on inflow [cite: 57-89]
+
+        % Construct the decoupled system for simulation
+        sys_dec = ss(A_decoupled, B, eye(size(A, 1)), 0);
+
+        y1_dec = lsim(sys_dec, u1, t);
+        y2_dec = lsim(sys_dec, u2, t);
+
+    else
+        % 3x3 Coning Analysis: States [beta_dot; beta; lambda_i0]
+        % Row 1 & 2 are flapping, Row 3 is inflow
+        A_decoupled(1:2, 3) = 0;   % Remove inflow effect on flapping
+        A_decoupled(3, 1:2) = 0;   % Remove flapping effect on inflow
+        % Construct the decoupled system for simulation
+        sys_dec = ss(A_decoupled, B, eye(size(A, 1)), 0);
+
+        [y_dec] = lsim(sys_dec, u, t);
+    end
+
+
+
+
 
 
     %% 5. Plotting (States in Degrees)
@@ -159,16 +209,24 @@ for idxSix = 1:2
 
     else
         % --- 3x3 Coning Results - SINGLE PLOT MODE ---
+        lw = 1;
         figure(4); clf;
 
         subplot(2,1,1);
-        plot(t_out, y(:,2)*180/pi, 'b', 'LineWidth', 1.5);  % beta_0 flapping
+        plot(t_out, y(:,2)*180/pi, 'b', 'LineWidth', lw);  % beta_0 flapping
+
+        hold on;
+        plot(t_out, y_dec(:,2)*180/pi, 'k:','LineWidth', lw+0.5); % Decoupled flapping in dotted black
+        legend('Coupled', 'Decoupled');
         ylabel('\beta_0 [deg]');
         title('Step Response: \theta_0 = 1^\circ');
         grid on;
 
         subplot(2,1,2);
-        plot(t_out, y(:,3), 'r', 'LineWidth', 1.5);         % lambda_i0 inflow
+        plot(t_out, y(:,3), 'r', 'LineWidth', lw);         % lambda_i0 inflow
+        hold on;
+        plot(t_out, y_dec(:,3), 'k:','LineWidth', lw+ 0.5); % Decoupled flapping in dotted black
+        legend('Coupled', 'Decoupled');
         ylabel('\lambda_{i0} [-]'); xlabel('Time [s]');
         grid on;
 
