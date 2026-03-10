@@ -122,7 +122,7 @@ for idxSix = 1:length(isSixVec)
     % 2. Combine the handles and the labels into one legend call
     % [h; h_dec] merges the 6 mode handles with the 1 decoupled handle
     % [ev_labels, {'Decoupled Eig. Val.'}] merges the two cell arrays
-    legend([h; h_dec], [ev_labels, {'Decoupled Eig. Val.'}], ...
+    legend([h; h_dec], [ev_labels, {'Decoupled Eigenvalues'}], ...
         'Location', 'northoutside', 'FontSize', 9, 'FontName', 'Consolas');
 
     %axis tight;
@@ -175,9 +175,6 @@ for idxSix = 1:length(isSixVec)
 
         [y_dec] = lsim(sys_dec, u, t);
     end
-
-
-
 
 
 
