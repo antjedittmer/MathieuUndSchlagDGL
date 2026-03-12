@@ -2,7 +2,7 @@
 clear; clc; close all;
 
 % Toggle: 1 = 6x6 Cyclic Analysis | 0 = 3x3 Coning Analysis
-isSixVec = 0;
+isSixVec = [0,1];
 pos0 = get(0,'defaultFigurePosition');
 
 for idxSix = 1:length(isSixVec)
@@ -35,16 +35,6 @@ for idxSix = 1:length(isSixVec)
     C_inf_0 = (Cl_alpha * sigma) / (6 * Km);
     % The term is defined as negative for stability in the A matrix
     L_inf_0 = -(1 / Km) * (4 * lambda_i_bar + (Cl_alpha * sigma / 4));
-
-
-%     a = 12/(sigma*Cl_alpha);
-%     b = 3/2;
-% 
-%     -b/(2*a) + sqrt( pi/180 - (b/(2*a))^2);
-% 
-% (6*CT/(sigma*Cl_alpha)+3*lambda_i_bar/2) *pi/180
-% 
-% 2/3 * Cl_alpha * sigma/(16 *lambda_i_bar + Cl_alpha*sigma)
 
 
     if isSix == 1
@@ -178,6 +168,7 @@ for idxSix = 1:length(isSixVec)
 
     else
         % 3x3 Coning Analysis: States [beta_dot; beta; lambda_i0]
+        
         % Row 1 & 2 are flapping, Row 3 is inflow
         A_decoupled(1:2, 3) = 0;   % Remove inflow effect on flapping
         A_decoupled(3, 1:2) = 0;   % Remove flapping effect on inflow
@@ -185,10 +176,9 @@ for idxSix = 1:length(isSixVec)
         sys_dec = ss(A_decoupled, B, eye(size(A, 1)), 0);
         [y_dec] = lsim(sys_dec, u, t);
         
-
         % C_inf_0/(- L_inf_0) * pi/180 - y(end,3) % for debugging
         lambda_inf = C_inf_0/(- L_inf_0) * pi/180;     
-        u_cor = u - g6* lambda_inf; %
+        u_cor = u - g6* lambda_inf; % Move lambda steady state into input
         [y_dec_cor] = lsim(sys_dec, u_cor, t);
     end
 
@@ -255,8 +245,8 @@ for idxSix = 1:length(isSixVec)
         plot(t_out, y(:,3), 'r', 'LineWidth', lw);         % lambda_i0 inflow
         hold on;
         plot(t_out, y_dec(:,3), 'k:','LineWidth', lw+ 0.5); % Decoupled flapping in dotted black
-        plot(t_out, y_dec_cor(:,3), '--', 'Color', grey_color, 'LineWidth', lw+0.5); % Decoupled flapping in dotted black
-        legend('Coupled', 'Decoupled', ['Decoupled', sprintf(' %2.2f deg', unique(u_cor)*180/pi)] );
+        % plot(t_out, y_dec_cor(:,3), '--', 'Color', grey_color, 'LineWidth', lw+0.5); % Decoupled flapping in dotted black
+        legend('Coupled', 'Decoupled'); % ['Decoupled', sprintf(' %2.2f deg', unique(u_cor)*180/pi)] 
         ylabel('\lambda_{i0} [-]'); xlabel('Time [s]');
         grid on;
 
