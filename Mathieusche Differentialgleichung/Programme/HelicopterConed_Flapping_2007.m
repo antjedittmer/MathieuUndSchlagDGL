@@ -5,6 +5,8 @@ clear; clc; close all;
 isSixVec = [0,1];
 pos0 = get(0,'defaultFigurePosition');
 
+showDecoupled = 0;
+
 for idxSix = 1:length(isSixVec)
     isSix = isSixVec(idxSix);
 
@@ -168,16 +170,16 @@ for idxSix = 1:length(isSixVec)
 
     else
         % 3x3 Coning Analysis: States [beta_dot; beta; lambda_i0]
-        
+
         % Row 1 & 2 are flapping, Row 3 is inflow
         A_decoupled(1:2, 3) = 0;   % Remove inflow effect on flapping
         A_decoupled(3, 1:2) = 0;   % Remove flapping effect on inflow
         % Construct the decoupled system for simulation
         sys_dec = ss(A_decoupled, B, eye(size(A, 1)), 0);
         [y_dec] = lsim(sys_dec, u, t);
-        
+
         % C_inf_0/(- L_inf_0) * pi/180 - y(end,3) % for debugging
-        lambda_inf = C_inf_0/(- L_inf_0) * pi/180;     
+        lambda_inf = C_inf_0/(- L_inf_0) * pi/180;
         u_cor = u - g6* lambda_inf; % Move lambda steady state into input
         [y_dec_cor] = lsim(sys_dec, u_cor, t);
     end
@@ -189,67 +191,96 @@ for idxSix = 1:length(isSixVec)
     grey_color = 0.5*ones(1,3);
     if isSix == 1
         % --- 6x6 Cyclic Results: Flapping ---
-        % --- 6x6 Cyclic Results: Flapping ---
 
-        grey_color = 0.5*ones(1,3);
         figure(2); clf;
+        % --- Subplot 1: Theta_C Step ---
         subplot(2,1,1);
-        plot(t, y1(:,3)*180/pi, 'b'); hold on; % Coupled beta_1c [cite: 329]
-        plot(t, y1(:,4)*180/pi, 'r');          % Coupled beta_1s [cite: 329]
-        plot(t, y_dec1(:,3)*180/pi, 'k:', 'LineWidth', lw+0.5); % Decoupled beta_1c
-        plot(t, y_dec1(:,4)*180/pi, '--', 'Color', grey_color, 'LineWidth', lw+0.5); % Decoupled beta_1s
+        plot(t, y1(:,3)*180/pi, 'b', 'DisplayName', 'Coupled \beta_{1C}','LineWidth', lw); hold on;
+        plot(t, y1(:,4)*180/pi, 'r', 'DisplayName', 'Coupled \beta_{1S}','LineWidth', lw);
+        if showDecoupled == 1
+            plot(t, y_dec1(:,3)*180/pi, 'k:', 'LineWidth', lw+0.5, 'DisplayName', 'Decoupled \beta_{1C}');
+            plot(t, y_dec1(:,4)*180/pi, '--', 'Color', grey_color, 'LineWidth', lw+0.5, 'DisplayName', 'Decoupled \beta_{1S}');
+        end
         ylabel('Flapping [deg]'); title('Step Response: \theta_C = 1^\circ');
-        legend('Coupled \beta_{1C}', 'Coupled \beta_{1S}', 'Decoupled \beta_{1C}', 'Decoupled \beta_{1S}'); grid on;
+        grid on; legend('Location','east');
 
+        % --- Subplot 2: Theta_S Step ---
         subplot(2,1,2);
-        plot(t, y2(:,3)*180/pi, 'b'); hold on; % Coupled beta_1c [cite: 332]
-        plot(t, y2(:,4)*180/pi, 'r');          % Coupled beta_1s [cite: 332]
-        plot(t, y_dec2(:,3)*180/pi, 'k:', 'LineWidth', lw+0.5); % Decoupled beta_1c
-        plot(t, y_dec2(:,4)*180/pi, '--', 'Color', grey_color, 'LineWidth', lw+0.5); % Decoupled beta_1s
+        plot(t, y2(:,3)*180/pi, 'b', 'DisplayName', 'Coupled \beta_{1C}','LineWidth', lw); hold on;
+        plot(t, y2(:,4)*180/pi, 'r', 'DisplayName', 'Coupled \beta_{1S}', 'LineWidth', lw);
+        if showDecoupled == 1
+            plot(t, y_dec2(:,3)*180/pi, 'k:', 'LineWidth', lw+0.5, 'DisplayName', 'Decoupled \beta_{1C}');
+            plot(t, y_dec2(:,4)*180/pi, '--', 'Color', grey_color, 'LineWidth', lw+0.5, 'DisplayName', 'Decoupled \beta_{1S}');
+        end
         ylabel('Flapping [deg]'); xlabel('Time [s]'); title('Step Response: \theta_S = 1^\circ');
-        legend('Coupled \beta_{1C}', 'Coupled \beta_{1S}', 'Decoupled \beta_{1C}', 'Decoupled \beta_{1S}'); grid on;
+        grid on; legend('Location','east');
 
-        % --- 6x6 Cyclic Results: Inflow ---
         figure(3); clf;
-        subplot(2,1,1);
-        plot(t, y1(:,5), 'b'); hold on; % Coupled lambda_1c [cite: 338]
-        plot(t, y1(:,6), 'r');          % Coupled lambda_1s [cite: 338]
-        plot(t, y_dec1(:,5), 'k:', 'LineWidth', lw+0.5); % Decoupled lambda_1c
-        plot(t, y_dec1(:,6), '--', 'Color', grey_color, 'LineWidth', lw+0.5); % Decoupled lambda_1s
-        ylabel('Inflow [-]'); title('Step Response: \theta_C = 1^\circ');
-        legend('Coupled \lambda_{1C}', 'Coupled \lambda_{1S}', 'Decoupled \lambda_{1C}', 'Decoupled \lambda_{1S}'); grid on;
 
+        % --- Subplot 1: Theta_C Step ---
+        subplot(2,1,1);
+        % Note: Removed *180/pi as inflow is typically non-dimensional [-]
+        plot(t, y1(:,5), 'b', 'DisplayName', 'Coupled \lambda_{1C}', 'LineWidth', lw); hold on;
+        plot(t, y1(:,6), 'r', 'DisplayName', 'Coupled \lambda_{1S}', 'LineWidth', lw);
+        if showDecoupled == 1
+            plot(t, y_dec1(:,5), 'k:', 'LineWidth', lw+0.5, 'DisplayName', 'Decoupled \lambda_{1C}');
+            plot(t, y_dec1(:,6), '--', 'Color', grey_color, 'LineWidth', lw+0.5, 'DisplayName', 'Decoupled \lambda_{1S}');
+        end
+        ylabel('Inflow [-]'); title('Step Response: \theta_C = 1^\circ');
+        grid on; legend('Location','Southeast');
+
+        % --- Subplot 2: Theta_S Step ---
         subplot(2,1,2);
-        plot(t, y2(:,5), 'b'); hold on; % Coupled lambda_1c [cite: 343]
-        plot(t, y2(:,6), 'r');          % Coupled lambda_1s [cite: 343]
-        plot(t, y_dec2(:,5), 'k:', 'LineWidth', lw+0.5); % Decoupled lambda_1c
-        plot(t, y_dec2(:,6), '--', 'Color', grey_color, 'LineWidth', lw+0.5); % Decoupled lambda_1s
+        plot(t, y2(:,5), 'b', 'DisplayName', 'Coupled \lambda_{1C}', 'LineWidth', lw); hold on;
+        plot(t, y2(:,6), 'r', 'DisplayName', 'Coupled \lambda_{1S}', 'LineWidth', lw);
+        if showDecoupled == 1
+            plot(t, y_dec2(:,5), 'k:', 'LineWidth', lw+0.5, 'DisplayName', 'Decoupled \lambda_{1C}');
+            plot(t, y_dec2(:,6), '--', 'Color', grey_color, 'LineWidth', lw+0.5, 'DisplayName', 'Decoupled \lambda_{1S}');
+        end
         ylabel('Inflow [-]'); xlabel('Time [s]'); title('Step Response: \theta_S = 1^\circ');
-        legend('Coupled \lambda_{1C}', 'Coupled \lambda_{1S}', 'Decoupled \lambda_{1C}', 'Decoupled \lambda_{1S}'); grid on;
+        pos0 = get(gca,'YLim');
+        set(gca, 'YLim', round(pos0*1000)/1000)
+        drawnow;
+
+        grid on; legend('Location','northeast');
+
     else
         % --- 3x3 Coning Results - SINGLE PLOT MODE ---
 
         figure(4); clf;
 
+        % --- Subplot 1: Flapping ---
         subplot(2,1,1);
-        plot(t_out, y(:,2)*180/pi, 'b', 'LineWidth', lw);  % beta_0 flapping
+        plot(t_out, y(:,2)*180/pi, 'b', 'LineWidth', lw, ...
+            'DisplayName', 'Coupled');
         hold on;
-        plot(t_out, y_dec(:,2)*180/pi, 'k:','LineWidth', lw+0.5); % Decoupled flapping in dotted black
-        plot(t_out, y_dec_cor(:,2)*180/pi, '--', 'Color', grey_color, 'LineWidth', lw+0.5); % Decoupled flapping in dotted black
-        legend('Coupled', 'Decoupled', ['Decoupled', sprintf(' %2.2f deg', unique(u_cor)*180/pi)] );
+        plot(t_out, y_dec(:,2)*180/pi, 'k:', 'LineWidth', lw+0.5, ...
+            'DisplayName', 'Decoupled');
+        plot(t_out, y_dec_cor(:,2)*180/pi, '--', 'Color', grey_color, 'LineWidth', lw+0.5, ...
+            'DisplayName', ['Decoupled', sprintf(' %2.2f deg', unique(u_cor)*180/pi)]);
+
         ylabel('\beta_0 [deg]');
         title('Step Response: \theta_0 = 1^\circ');
         grid on;
+        legend('Location','best'); % Automatically uses 'DisplayName' labels
 
+        % --- Subplot 2: Inflow ---
         subplot(2,1,2);
-        plot(t_out, y(:,3), 'r', 'LineWidth', lw);         % lambda_i0 inflow
+        plot(t_out, y(:,3), 'r', 'LineWidth', lw, ...
+            'DisplayName', 'Coupled');
         hold on;
-        plot(t_out, y_dec(:,3), 'k:','LineWidth', lw+ 0.5); % Decoupled flapping in dotted black
-        % plot(t_out, y_dec_cor(:,3), '--', 'Color', grey_color, 'LineWidth', lw+0.5); % Decoupled flapping in dotted black
-        legend('Coupled', 'Decoupled'); % ['Decoupled', sprintf(' %2.2f deg', unique(u_cor)*180/pi)] 
-        ylabel('\lambda_{i0} [-]'); xlabel('Time [s]');
-        grid on;
 
-        % NO legend needed - only 1 signal per subplot (exactly as requested)
+        plot(t_out, y_dec(:,3), 'k:', 'LineWidth', lw+0.5, ...
+            'DisplayName', 'Decoupled');
+        if showDecoupled == 1
+            plot(t_out, y_dec_cor(:,3), '--', 'Color', grey_color, 'LineWidth', lw+0.5,...
+                'DisplayName', ['Decoupled', sprintf(' %2.2f deg', unique(u_cor)*180/pi)]);
+        end
+
+        ylabel('\lambda_{i0} [-]');
+        xlabel('Time [s]');
+        grid on;
+        legend('Location','best');
+
     end
 end
