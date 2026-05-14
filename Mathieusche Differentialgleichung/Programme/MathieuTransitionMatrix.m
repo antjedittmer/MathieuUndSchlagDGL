@@ -99,9 +99,15 @@ for dIdx = 1 : lVec
     labelPos.x = [7.6 0.2 0];
     labelPos.y = [0 1.2 0.1];
     labelPos.z = [0.7 0 1.3];
+    strNu = sprintf(' nu = %2.1f', nu_02);
 
-    titleStr = strrep(sprintf('%s,%s','1. Spaltenvektor der Monodromiematrix fuer e = [1;0]; D = ',strD),',','');
-    pngname = strrep(sprintf('MathieuDiagram_D%2.1e_x1_2D',D),'.','dot');
+    titleStr = strrep(sprintf('%s,%s;%s','1. Spaltenvektor der Monodromiematrix fuer e = [1;0]; D = ',strD,strNu),',','');
+
+    if nu_02 == 5
+        pngname = strrep(sprintf('MathieuDiagram_D%2.1e_x1_2D',D),'.','dot');
+    else
+        pngname = strrep(sprintf('MathieuDiagram_D%2.1e_nu%2.1f_x1_2D',D,nu_02),'.','dot');
+    end
 
     if plot2D == 1
         pngfile = fullfile(fDir,pngname);

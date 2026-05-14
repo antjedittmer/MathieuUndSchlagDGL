@@ -12,13 +12,13 @@ fDir = 'figureFolder'; % Folder for figures
 if ~isdir(fDir) %#ok<*ISDIR>
     mkdir(fDir)
 end
-fDirPeters = fullfile(fDir,'figureFolderPeters'); % Subfolder specific to Peters' plots
+fDirPeters = fullfile(fDir,'figureFolderPeters_SVG'); % Subfolder specific to Peters' plots
 if ~isdir(fDirPeters)
     mkdir(fDirPeters)
 end
 
 % --- Setup for Data Saving ---
-dDir = 'dataFolder'; % Folder for Excel and .mat files
+dDir = fullfile(fDir, 'dataFolderPeters'); % Folder for Excel and .mat files
 if ~isdir(dDir)
     mkdir(dDir)
 end
@@ -72,8 +72,12 @@ for w = w_values
     % -----------------------------------------------------------------------
     % --- Main Continuation Loop ---
     % -----------------------------------------------------------------------
+  
+   A_t_struct = struct;
     for k = 1:N_eps
+        w_str = num2str(w, '%1.1f');
         epsilon = eps_vals(k);
+            
         D_func = @(t) [0, 1; -(w_sq + epsilon*sin(Omega*t)), 0];
         sol_ode = ode45(@(t, x) reshape(D_func(t) * reshape(x, 2, 2), 4, 1), [0, T], reshape(x0, 4, 1));
         Phi_T = reshape(deval(sol_ode, T), 2, 2);
@@ -93,6 +97,7 @@ for w = w_values
 
         % Calculate the periodic eigenvector component A(t) (Eq. 11)
         Q_t_disp = nan(1,N_FFT);
+        A_t_all = nan(2,N_FFT);
         for j = 1:N_FFT
             Phi_t = reshape(Phi_t_interp(:, j), 2, 2);
 
@@ -100,6 +105,44 @@ for w = w_values
             % A(t) = Phi(t) * v * exp(-eta * t)
             A_t = Phi_t * v_mode * exp(-eta_mode * t_fft(j));
             Q_t_disp(j) = A_t(1); % Displacement component
+            A_t_all(:,j) = A_t;
+        end
+
+        if mod(k,100) == 0 || k == 1
+            A_t_struct.(sprintf('k%03d',k)) =  A_t_all;
+
+            fig = figure;
+            tlo = tiledlayout(4, 1, 'TileSpacing', 'compact', 'Padding', 'compact');
+
+            % Define localized variables for the loop
+            data_to_plot = {real(A_t_all(1,:)), imag(A_t_all(1,:)), ...
+                real(A_t_all(2,:)), imag(A_t_all(2,:))};
+
+            % Short LaTeX labels for rotorcraft modal analysis
+            labels = {'Re(V_{\omega_0,1})', 'Im(V_{\omega_0,1})', ...
+                'Re(V_{\omega_0,2})', 'Im(V_{\omega_0,2})'};
+
+            for i = 1:4
+                nexttile;
+                plot(1:N_FFT, data_to_plot{i}, 'LineWidth', 1.2);
+
+                % Use Interpreter 'tex' for mathematical subscripts
+                ylabel(labels{i}, 'Interpreter', 'tex');
+                grid on; axis tight;
+
+                % Remove X-axis labels for top 3 tiles to save vertical space
+                if i == 1
+                    title(tlo, sprintf('Periodic Eigenvector Components: w = %s, eps = %2.2f', w_str, epsilon));
+                end
+
+                if i < 4
+                    xticklabels([]);
+                else
+                    xlabel('Timestep (N_{FFT})');
+                end
+            end
+
+            
         end
 
         % Perform FFT to determine normalized participation of branches m
@@ -167,7 +210,7 @@ for w = w_values
         
     hold on;
     ode_str = '$\ddot{x}(t) + (w^2 + \epsilon\sin(\Omega t)) x(t) = 0$';
-    w_str = num2str(w, '%1.1f');
+
     new_title = ['Harmonic participation: ', ode_str, ', $w = ', w_str, ', \Omega = 1$\,rad/s'];
     title(new_title, 'Interpreter', 'latex');
     xlabel('$\epsilon$', 'FontSize', 14, 'Interpreter', 'latex');
@@ -236,7 +279,9 @@ for w = w_values
         text(3.0, 0.15, '[-2/+2]', 'Interpreter', 'latex', 'FontSize', 12, 'FontWeight', 'bold');
     end
     hold off;
-    print(pngfile, '-dpng')
+    
+    pngfile = strrep(pngfile,'png','svg');
+    print(pngfile, '-dsvg');
 end
 
 

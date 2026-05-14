@@ -12,13 +12,13 @@ fDir = 'figureFolder'; % Folder for figures
 if ~isdir(fDir) %#ok<ISDIR>
     mkdir(fDir)
 end
-fDirPeters = fullfile(fDir,'figureFolderPeters'); % Subfolder specific to Peters' plots
+fDirPeters = fullfile(fDir,'figureFolderPeters_SVG'); % Subfolder specific to Peters' plots
 if ~isdir(fDirPeters) %#ok<ISDIR>
     mkdir(fDirPeters)
 end
 
 % --- NEW: Setup for Data Saving ---
-dDir = fullfile('dataFolder','dataFolderPeters'); % Folder for Excel and .mat files
+dDir = fDirPeters; %fullfile('dataFolder','dataFolderPeters'); % Folder for Excel and .mat files
 if ~isdir(dDir) %#ok<ISDIR>
     mkdir(dDir)
 end
@@ -33,7 +33,7 @@ useK = strcmp(K,'BlackLines');
 Omega = 1;       % Fundamental frequency (Omega = 1 rad/s)
 T = 2*pi/Omega; % Period
 % Outer loop for different unperturbed frequencies (w)
-w_values = [0.3, 0.5, 0.7];
+w_values = 0.3; %[0.3, 0.5, 0.7];
 for w = w_values
     w_sq = w^2;
     % --- Basis Frequency omega0 Calculation (Peters' Convention) ---
@@ -227,6 +227,9 @@ for w = w_values
    % Filename generation for saving the plot
     pngname = strrep(sprintf('PetersFrequency%s_w%1.1f',K,w),'.','dot');
     pngfile = fullfile(fDirPeters,[pngname,'.png']);
-    print(pngfile, '-dpng')
+    %print(pngfile, '-dpng')
+
+    pngfile = strrep(pngfile,'png','svg');
+    print(pngfile, '-dsvg');
 
 end

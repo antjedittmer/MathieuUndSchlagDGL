@@ -189,6 +189,8 @@ for idxSix = 1:length(isSixVec)
     %% 5. Plotting (States in Degrees)
     lw = 1;
     grey_color = 0.5*ones(1,3);
+
+    xstr = 'Time [-]';
     if isSix == 1
         % --- 6x6 Cyclic Results: Flapping ---
 
@@ -212,7 +214,7 @@ for idxSix = 1:length(isSixVec)
             plot(t, y_dec2(:,3)*180/pi, 'k:', 'LineWidth', lw+0.5, 'DisplayName', 'Decoupled \beta_{1C}');
             plot(t, y_dec2(:,4)*180/pi, '--', 'Color', grey_color, 'LineWidth', lw+0.5, 'DisplayName', 'Decoupled \beta_{1S}');
         end
-        ylabel('Flapping [deg]'); xlabel('Time [s]'); title('Step Response: \theta_S = 1^\circ');
+        ylabel('Flapping [deg]'); xlabel( xstr); title('Step Response: \theta_S = 1^\circ');
         grid on; legend('Location','east');
 
         figure(3); clf;
@@ -237,7 +239,7 @@ for idxSix = 1:length(isSixVec)
             plot(t, y_dec2(:,5), 'k:', 'LineWidth', lw+0.5, 'DisplayName', 'Decoupled \lambda_{1C}');
             plot(t, y_dec2(:,6), '--', 'Color', grey_color, 'LineWidth', lw+0.5, 'DisplayName', 'Decoupled \lambda_{1S}');
         end
-        ylabel('Inflow [-]'); xlabel('Time [s]'); title('Step Response: \theta_S = 1^\circ');
+        ylabel('Inflow [-]'); xlabel( xstr); title('Step Response: \theta_S = 1^\circ');
         pos0 = get(gca,'YLim');
         set(gca, 'YLim', round(pos0*1000)/1000)
         drawnow;
@@ -278,7 +280,7 @@ for idxSix = 1:length(isSixVec)
         end
 
         ylabel('\lambda_{i0} [-]');
-        xlabel('Time [s]');
+        xlabel( xstr);
         grid on;
         legend('Location','best');
 
