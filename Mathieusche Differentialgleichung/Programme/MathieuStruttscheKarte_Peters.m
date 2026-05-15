@@ -38,7 +38,7 @@ if ~isfolder(excelDir)
 end
 
 Nz   = 2;      % Number of equations in the DGL system (2nd-order ODE)
-DVec = 0.15;   % Damping coefficient D
+DVec = 0.01;   % Damping coefficient D
 t0    = 0.0;
 Omega = 1;          % Normalized excitation frequency
 T     = 2*pi/Omega; % Period of excitation

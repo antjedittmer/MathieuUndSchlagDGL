@@ -108,6 +108,7 @@ for w = w_values
         % Create a centered frequency vector for the FFT results
         % Since C is shifted (fftshift), freq_indices must cover [-N/2, N/2-1]
         freq_indices = (-N_FFT/2 : N_FFT/2 - 1);
+       % plot(freq_indices,abs(C))
 
         % Convert indices to physical frequencies (cycles per unit time)
         % Note: frequencies are in increments of 1/T
@@ -127,9 +128,11 @@ for w = w_values
             [~, idxMin] = min(abs(frequencies - target_freq));
 
             % Extract the magnitude |c_n| as defined in Eq. 17b
+            freq_vec(idx)=frequencies(idxMin);
             harmonic_magnitudes_raw(idx) = abs(C(idxMin));
         end
 
+        
         total_magnitude_sum = sum(harmonic_magnitudes_raw);
         if total_magnitude_sum > 1e-12
             phi_m = harmonic_magnitudes_raw / total_magnitude_sum;

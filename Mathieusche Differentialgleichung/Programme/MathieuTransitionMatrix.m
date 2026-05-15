@@ -15,7 +15,7 @@ else
     strInterp = 'latex';
 end
 
-nu_02 = 5;
+nu_02 = 8;
 nu_C2 = nu_02;
 
 t0 = 0.0;
@@ -116,7 +116,7 @@ for dIdx = 1 : lVec
     if isInterpTex == 0
         ylabel(hAxis,strP.hi,'interpreter',strInterp,'Position',labelPos.y.*[1,1.2,1])
     end
-    view([60,15])
+    view([70,13])
     pngfileAspect = strrep(pngfile,fDir,fDirAspect);
     print(pngfileAspect, '-dpng')
 
