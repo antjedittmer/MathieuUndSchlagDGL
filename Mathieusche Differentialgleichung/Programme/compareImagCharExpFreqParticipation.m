@@ -5,7 +5,8 @@ fDir = 'figureFolder';
 if ~isdir(fDir) %#ok<*ISDIR>
     mkdir(fDir);
 end
-fDirPeters = fullfile(fDir, 'figureFolderPeters');
+%fDirPeters = fullfile(fDir, 'figureFolderPeters');
+fDirPeters = fullfile(fDir,'figureFolderPeters_SVG');
 if ~isdir(fDirPeters)
     mkdir(fDirPeters);
 end
@@ -194,6 +195,15 @@ title({['Mathieu ODE: x''''(t)+ 2Dx''(t) +(\nu_0^2 + \nu_c^2 cos(t))x(t) = 0,'..
 legend('Location','best');
 grid on;
 
+table4Excel = table;
+table4Excel.nu_vals= nu_vals';
+table4Excel.char_exp_real1 = real_all(:,1);
+table4Excel.char_exp_real2 = real_all(:,2);
+table4Excel.char_exp_imag1_arnold = frequency_imag + m_bubble;
+%table4Excel.char_exp_imag2_arnold = real_all(:,2);
+table4Excel.char_exp_imag1_peters = composite_freq;
+table4Excel.diff_peters_arnold = composite_freq - (frequency_imag + m_bubble);
+
 % Subplot 2: Difference (Peters - Arnold)
 nexttile; %subplot(4,1,2);
 ImA2Interp = frequency_imag+ m_bubble;
@@ -221,6 +231,20 @@ title('Individual Frequency Branches');
 legend(arrayfun(@(m) sprintf('m=%d', m_range(m)), 1:length(m_range), 'UniformOutput', false), 'Location','northeastoutside');
 grid on;
 
+% Generate table to print excel
+colNames = cell(1, size(branch_freqs_all,2));
+
+for i = 1:length(m_range)
+    m = m_range(i);
+    if m < 0
+        colNames{i} = sprintf('freq_branch_m_neg_%d', abs(m));
+    else
+        colNames{i} = sprintf('freq_branch_m_pos_%d', m);
+    end
+end
+tmpTableFreq = array2table(branch_freqs_all, 'VariableNames', colNames);
+
+
 % Subplot 4: Harmonic Participation
 nexttile; %subplot(4,1,4);
 %set(gca, 'ColorOrder', jet(length(m_range)));
@@ -236,11 +260,23 @@ title('Harmonic Participation');
 legend(arrayfun(@(m) sprintf('m=%d', m_range(m)), 1:length(m_range), 'UniformOutput', false), 'Location','northeastoutside');
 grid on;
 
+colNamesPhi = strrep(colNames,'freq_branch','harm_part');
+tmpTableHarmPart = array2table(participation_data, 'VariableNames', colNamesPhi);
+
+table4ExcelAll = [table4Excel, tmpTableFreq, tmpTableHarmPart];
+
 % === SAVE FIGURE ===
 pngname = sprintf('compare_char_exp_freq_participation_w1dot0.png');
 pngfile = fullfile(fDirPeters, pngname);
-saveas(fig, pngfile);
+
+svgfile = strrep(pngfile,'png','svg');
+print(svgfile, '-dsvg');
+
+%saveas(fig, pngfile);
 fprintf('Figure saved: %s\n', pngfile);
+
+dataFileName = strrep(pngname,'.png','');
+writetable(table4ExcelAll, fullfile(fDirPeters, [dataFileName, '.xlsx']));
 
 %% ===
 
