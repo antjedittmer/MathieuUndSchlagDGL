@@ -2,21 +2,20 @@
 % Generation of the diagrams for the time histories of the transition matrices
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %function [DVec, MonodromieCell, pCell, ePcell] = MathieuDiagrammeTransitionsmatrizen_GeschwX1PosX2
-clc; close all; 
+clc; close all;
 
 isInterpTex = 0; %1: Tex interpreter, 0: Latex interpreter
 plot2D = 0; %1: 2D und 3D plots, 0: nur 3D plots erstellen
 
-if isInterpTex == 1 || verLessThan('matlab', '9.8') 
-    isInterpTex = 1; % Bei R2007 wird der Tex-Interpreter eingeschaltet            
+if isInterpTex == 1 || verLessThan('matlab', '9.8')
+    isInterpTex = 1; % Bei R2007 wird der Tex-Interpreter eingeschaltet
     strInterp = 'tex';
 else
     isInterpTex = 0;
     strInterp = 'latex';
 end
 
-nu_02 = 8;
-nu_C2 = nu_02;
+nu_vector = [0.25, 5, 8];
 
 t0 = 0.0;
 T = 2*pi;
@@ -28,20 +27,22 @@ fDir = 'figureFolder'; % Folder for figures
 if ~isdir(fDir) %#ok<ISDIR>
     mkdir(fDir)
 end
-fDir1 = fullfile(fDir,'figureFolder_GeschwX1PosX2'); % Subfolder 
+fDir1 = fullfile(fDir,'figureFolder_GeschwX1PosX2_SVG'); % Subfolder
 if ~isdir(fDir1) %#ok<ISDIR>
     mkdir(fDir1)
 end
-fDirAspect = fullfile(fDir,'figureFolderAspectPhi'); % Subfolder 
+fDirAspect = fullfile(fDir,'figureFolderAspectPhi_SVG'); % Subfolder
 if ~isdir(fDirAspect) %#ok<ISDIR>
     mkdir(fDirAspect)
 end
 
 % D = [0, 0.1, 0.15, 0.8, 1];
 % D = 0.1;
-DVec = [0.15; 0.001; 0.2];
-strDVec = {sprintf('%2.2f',DVec(1)); sprintf('%2.3f',DVec(2)); ...
-    sprintf('%2.1f',DVec(3))};
+DVec = [0.15];% 0.001; 0.2];
+strDVec= cell(length(DVec),1);
+for idx = 1:length(DVec)
+    strDVec{idx} = sprintf('%2.2f',DVec(1));
+end
 
 % For the graphical representation (Für die grafische Darstellung)
 strP.hi = '$\phi \; [-]$';
@@ -55,118 +56,121 @@ if isInterpTex == 1
     strP.si = '\psi [rad]';
 end
 
+for idx_nu = 1:length(nu_vector)
+    nu_02 = nu_vector(idx_nu);
+    nu_C2 = nu_02;
 
-noF = 1;
-lVec = length(DVec);
+    noF = 1;
+    lVec = length(DVec);
 
-MonodromieCell = cell(lVec,1);
-pCell = cell(lVec,1);
-ePcell = cell(lVec,1);
+    MonodromieCell = cell(lVec,1);
+    pCell = cell(lVec,1);
+    ePcell = cell(lVec,1);
 
-for dIdx = 1 : lVec
-    D = DVec(dIdx);
-    strD = strDVec{dIdx};
+    for dIdx = 1 : lVec
+        D = DVec(dIdx);
+        strD = strDVec{dIdx};
 
-    sol1 = ode45(@(psi,x)MathieuDGL(psi,x,D,nu_02,nu_C2),[t0,T],Diagonal(:,1));
-    sol2 = ode45(@(psi,x)MathieuDGL(psi,x,D,nu_02,nu_C2),[t0,T],Diagonal(:,2));
+        sol1 = ode45(@(psi,x)MathieuDGL(psi,x,D,nu_02,nu_C2),[t0,T],Diagonal(:,1));
+        sol2 = ode45(@(psi,x)MathieuDGL(psi,x,D,nu_02,nu_C2),[t0,T],Diagonal(:,2));
 
-    y1 = deval(sol1,tspan);
-    y2 = deval(sol2,tspan);
+        y1 = deval(sol1,tspan);
+        y2 = deval(sol2,tspan);
 
-    % Monodromiematrix
-    Monodromie = [y1(:,end),y2(:,end)]; % [deval(sol1,T), deval(sol2,T)];
-    MonodromieCell{dIdx} = sprintf('[%2.4f,%2.4f;%2.4f,%2.4f]', Monodromie) ; % Monodromie;
+        % Monodromiematrix
+        Monodromie = [y1(:,end),y2(:,end)]; % [deval(sol1,T), deval(sol2,T)];
+        MonodromieCell{dIdx} = sprintf('[%2.4f,%2.4f;%2.4f,%2.4f]', Monodromie) ; % Monodromie;
 
-    % Charakteristische Multiplikatoren (Eigenwerte der Monodromiematrix)
-    p = [1, -(Monodromie(1,1) + Monodromie(2,2)), ...
-        Monodromie(1,1)*Monodromie(2,2)-Monodromie(1,2)*Monodromie(2,1)];
-    pCell{dIdx} = p;
+        % Charakteristische Multiplikatoren (Eigenwerte der Monodromiematrix)
+        p = [1, -(Monodromie(1,1) + Monodromie(2,2)), ...
+            Monodromie(1,1)*Monodromie(2,2)-Monodromie(1,2)*Monodromie(2,1)];
+        pCell{dIdx} = p;
 
-    eP = roots(p);
-    ePcell{dIdx} = eP';
+        eP = roots(p);
+        ePcell{dIdx} = eP';
 
-     
-    % Geschwindigkeit und Position
-    Gesch1 = y1(1,:)';
-    Pos1 = y1(2,:)';
 
-    Gesch2 = y2(1,:)' ;
-    Pos2 = y2(2,:)';
+        % Geschwindigkeit und Position
+        Gesch1 = y1(1,:)';
+        Pos1 = y1(2,:)';
 
-    %% Graphics: 2D and 3D, 1st and 2nd column vector: 1st column vector
-    AxisLimitsYZ.Y1 = [-1,1];
-    AxisLimitsYZ.Z1 = [-2 2];
-    labelPos.x = [7.6 0.2 0];
-    labelPos.y = [0 1.2 0.1];
-    labelPos.z = [0.7 0 1.3];
-    strNu = sprintf(' nu = %2.1f', nu_02);
+        Gesch2 = y2(1,:)' ;
+        Pos2 = y2(2,:)';
 
-    titleStr = strrep(sprintf('%s,%s;%s','1. Spaltenvektor der Monodromiematrix fuer e = [1;0]; D = ',strD,strNu),',','');
+        %% Graphics: 2D and 3D, 1st and 2nd column vector: 1st column vector
+        AxisLimitsYZ.Y1 = [-1,1];
+        AxisLimitsYZ.Z1 = [-2 2];
+        labelPos.x = [7.6 0.2 0];
+        labelPos.y = [0 1.2 0.1];
+        labelPos.z = [0.7 0 1.3];
+        strNu = sprintf(' nu = %2.2f', nu_02);
 
-    if nu_02 == 5
-        pngname = strrep(sprintf('MathieuDiagram_D%2.1e_x1_2D',D),'.','dot');
-    else
-        pngname = strrep(sprintf('MathieuDiagram_D%2.1e_nu%2.1f_x1_2D',D,nu_02),'.','dot');
+        titleStr = strrep(sprintf('%s,%s;%s','1. Spalte Monodromiematrix: e = [1;0]; D = ',strD,strNu),',','');
+
+        if nu_02 == 5
+            svgname = strrep(sprintf('MathieuDiagram_D%2.1e_x1_2D',D),'.','dot');
+        else
+            svgname = strrep(sprintf('MathieuDiagram_D%2.1e_nu%2.1f_x1_2D',D,nu_02),'.','dot');
+        end
+
+        if plot2D == 1
+            svgfile = fullfile(fDir,svgname);
+            noF = plot3D(noF,tspan,Gesch1,Pos1,T,AxisLimitsYZ,strP,labelPos,titleStr,svgfile,plot2D,isInterpTex);
+        end
+
+        svgname3D = strrep(svgname,'2D','3D');
+        svgfile = fullfile(fDir,svgname3D);
+        [noF,hAxis] = plot3D(noF,tspan,Gesch1,Pos1,T,AxisLimitsYZ,strP,labelPos, titleStr,svgfile,0,isInterpTex);
+
+        daspect([1 1 1]);
+        if isInterpTex == 0
+            ylabel(hAxis,strP.hi,'interpreter',strInterp,'Position',labelPos.y.*[1,1.2,1])
+        end
+        view([70,13])
+        svgfileAspect = strrep(svgfile,fDir,fDirAspect);
+        print(svgfileAspect, '-dsvg')
+
+        %% Graphics: 2D and 3D, 1st and 2nd column vector: 2nd column vector
+        AxisLimitsYZ.Y1 = [-2,2.4];
+        AxisLimitsYZ.Z1 = [-4.5 5.1];
+        multY = 2;
+        if D < 0.1
+            labelPos.x = [8.5 0.2 0];
+            multY = 1.5;
+        end
+        labelPos.y = [0 2.4 0.8];
+        labelPos.z = [0 0.5 2.8];
+
+        titleStr2 = strrep(strrep(titleStr,'1.','2.'),'[1;0]', '[0;1]');
+        svgname2 = strrep(svgname,'x1','x2');
+
+        if plot2D == 1
+            svgfile = fullfile(fDir,svgname2);
+            noF = plot3D(noF,tspan,Gesch2,Pos2,T,AxisLimitsYZ,strP,labelPos,titleStr2,svgfile,plot2D,isInterpTex);
+        end
+
+        svgname2_3D = strrep(svgname2,'2D','3D');
+        svgfile = fullfile(fDir,svgname2_3D);
+        [noF,hAxis] = plot3D(noF,tspan,Gesch2,Pos2,T,AxisLimitsYZ,strP,labelPos,titleStr2,svgfile,0,isInterpTex);
+
+        daspect([1 1 1]);
+        if isInterpTex == 0
+            labelPos.x = [8.5 0.2 0];
+            xlabel(hAxis,strP.si,'interpreter',strInterp,'Position',labelPos.x)
+            ylabel(hAxis,strP.hi,'interpreter',strInterp,'Position',labelPos.y .* [1,multY,0.1])
+            zlabel(hAxis,strP.hiDot,'interpreter',strInterp,'Position',labelPos.z .* [1,2,1],'Rotation',0)
+        end
+        view([40,15])
+        svgfileAspect = strrep(svgfile,fDir,fDirAspect);
+        print(svgfileAspect, '-dsvg')
+
     end
-
-    if plot2D == 1
-        pngfile = fullfile(fDir,pngname);
-        noF = plot3D(noF,tspan,Gesch1,Pos1,T,AxisLimitsYZ,strP,labelPos,titleStr,pngfile,plot2D,isInterpTex);
-    end
-
-    pngname3D = strrep(pngname,'2D','3D');
-    pngfile = fullfile(fDir,pngname3D);
-    [noF,hAxis] = plot3D(noF,tspan,Gesch1,Pos1,T,AxisLimitsYZ,strP,labelPos, titleStr,pngfile,0,isInterpTex);
-
-    daspect([1 1 1]);
-    if isInterpTex == 0
-        ylabel(hAxis,strP.hi,'interpreter',strInterp,'Position',labelPos.y.*[1,1.2,1])
-    end
-    view([70,13])
-    pngfileAspect = strrep(pngfile,fDir,fDirAspect);
-    print(pngfileAspect, '-dpng')
-
-    %% Graphics: 2D and 3D, 1st and 2nd column vector: 2nd column vector
-    AxisLimitsYZ.Y1 = [-2,2.4];
-    AxisLimitsYZ.Z1 = [-4.5 5.1];
-    multY = 2;
-    if D < 0.1 
-        labelPos.x = [8.5 0.2 0]; 
-        multY = 1.5;
-    end
-    labelPos.y = [0 2.4 0.8];
-    labelPos.z = [0 0.5 2.8];
-
-    titleStr2 = strrep(strrep(titleStr,'1.','2.'),'[1;0]', '[0;1]');
-    pngname2 = strrep(pngname,'x1','x2');
-
-    if plot2D == 1
-        pngfile = fullfile(fDir,pngname2);
-        noF = plot3D(noF,tspan,Gesch2,Pos2,T,AxisLimitsYZ,strP,labelPos,titleStr2,pngfile,plot2D,isInterpTex);
-    end
-
-    pngname2_3D = strrep(pngname2,'2D','3D');
-    pngfile = fullfile(fDir,pngname2_3D);
-    [noF,hAxis] = plot3D(noF,tspan,Gesch2,Pos2,T,AxisLimitsYZ,strP,labelPos,titleStr2,pngfile,0,isInterpTex);
-
-    daspect([1 1 1]);
-    if isInterpTex == 0
-        labelPos.x = [8.5 0.2 0];
-        xlabel(hAxis,strP.si,'interpreter',strInterp,'Position',labelPos.x)
-        ylabel(hAxis,strP.hi,'interpreter',strInterp,'Position',labelPos.y .* [1,multY,0.1])
-        zlabel(hAxis,strP.hiDot,'interpreter',strInterp,'Position',labelPos.z .* [1,2,1],'Rotation',0)
-    end
-    view([40,15])
-    pngfileAspect = strrep(pngfile,fDir,fDirAspect);
-    print(pngfileAspect, '-dpng')
-
 end
-
 try head(table(DVec,MonodromieCell,pCell,ePcell));
 catch  DVec,MonodromieCell,pCell,ePcell %#ok<NOPRT>
 end
 
-function [noF,hAxis]  = plot3D(noF,tspan,Gesch1,Pos1,T,AxisLimitsYZ,strP,labelPos,titleStr,pngfile,plot2D,isInterpTex)
+function [noF,hAxis]  = plot3D(noF,tspan,Gesch1,Pos1,T,AxisLimitsYZ,strP,labelPos,titleStr,svgfile,plot2D,isInterpTex)
 
 if nargin < 11 || isempty(plot2D)
     plot2D = 0;
@@ -230,6 +234,6 @@ else
     view([50 20])
 end
 
-print(pngfile, '-dpng')
+print(svgfile, '-dsvg')
 
 end

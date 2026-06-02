@@ -22,7 +22,7 @@ dDir = fullfile(fDir, 'dataFolderPeters'); % Folder for Excel and .mat files
 if ~isdir(dDir)
     mkdir(dDir)
 end
-
+plotswitch=0; %this is switch to enable diagnostic plot for the vector A
 % -----------------------------------------------------------------------
 % --- Parameters and Initialization ---
 % -----------------------------------------------------------------------
@@ -108,7 +108,7 @@ for w = w_values
             A_t_all(:,j) = A_t;
         end
 
-        if mod(k,100) == 0 || k == 1
+        if (mod(k,100) == 0 || k == 1) && plotswitch==1
             A_t_struct.(sprintf('k%03d',k)) =  A_t_all;
 
             fig = figure;
