@@ -1,4 +1,3 @@
-%% 
 %clear command window, clear workspace, close all figures
 clc ; clear variables ; close all;
 
@@ -15,13 +14,13 @@ T = 2*pi;         % Periodendauer
 %% Auswahl, welcher Rotor berechnet werden soll
 %(bitte entkommentieren)
 
-Auswahl=1;Blatt=3; %3-Blatt-Rotor, see-saw
+%Auswahl=1;Blatt=3; %3-Blatt-Rotor, see-saw
 %Auswahl=2;Blatt=3; %3-Blatt-Rotor, voll gelenkig
 %Auswahl=3;Blatt=4; %4-Blatt-Rotor, voll gelenkig
 %Auswahl=4;Blatt=5; %5-Blatt-Rotor, voll gelenkig
 %Auswahl=5;Blatt=3; %3-Blatt-Rotor, gelenk-/lagerlos
 %Auswahl=6;Blatt=4; %4-Blatt-Rotor, gelenk-/lagerlos
-%Auswahl = 7; Blatt = 1; %Einzelblattkoordinaten im rotierenden System
+Auswahl = 7; Blatt = 1; %Einzelblattkoordinaten im rotierenden System
 
 if exist('Auswahl','var') ~= 1
     Auswahl = 100;    % fuer Fehlermeldung, wenn keine Auswahl getroffen wurde
@@ -50,7 +49,7 @@ Par = table2array(Parameter);
 
 rho = Par(26,1);
 
-ebeta = 0.3; %Par(8,Auswahl);
+ebeta = Par(8,Auswahl);
 gamma = Par(13,Auswahl);
 d2 = Par(17,Auswahl);
 d3 = Par(18,Auswahl);
