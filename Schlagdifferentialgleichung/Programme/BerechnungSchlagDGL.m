@@ -139,26 +139,10 @@ for mu_param = mu_paramVec
     [~,idxSort] = sort(real(charMult));
     charMultSort1 = charMult(idxSort);
     
-    Re = real(charMult);
+    %Re = real(charMult);
     absMult1Greater = 0; %abs(real(charMultSort1(1))) - abs(real(charMultSort1(b1)))> 0.1;
 
-    if idx == 1
-        % bei erstem Eigenwert-Schritt noch keine Sortierung
-        eigenvalues_sorted(:, idx) = Re;
-        charMultSort2 = Re;
-    else
-        % Sortiere Eigenwerte im Vergleich zum vorherigen Schritt
-        prev_eigenvalues = eigenvalues_sorted(:, idx-1);
-        vecIdx = nan(AnzGl,1);
-        for i = 1:AnzGl
-            % nächstgelegener Eigenwert
-            [min_val, min_idx] = min(abs(Re - prev_eigenvalues(i)));
-            eigenvalues_sorted(i, idx) = Re(min_idx);
-            Re(min_idx) = NaN; % Wert auf NaN setzen gegen doppelte Zuordnung
-            vecIdx(i) = min_idx;
-        end
-        charMultSort2 = Re(vecIdx);
-    end
+  
     charMultSort = charMultSort1;
     prevAbsMult1Greater = absMult1Greater;
 
@@ -210,10 +194,11 @@ for mu_param = mu_paramVec
         real(charMultSort), imag(charMultSort)];
 
     Re = Eig.Real;
-    Im = sort(Eig.Imag) +  nAddVec; %ImagEigSortN; % sort(angle(eP(sortIdx)),'descend');
+    Im = Eig.Imag +  nAddVec; %ImagEigSortN; % sort(angle(eP(sortIdx)),'descend');
 
     CharExRe(idx,:) = Re;
     CharExIm(idx,:) = Im;
+    CharExImRaw(idx,:) = Eig.Imag;
 
     idx = idx+1;
 end
@@ -260,9 +245,32 @@ CharExRe2Cor = CharExRe2; % Korrigierter 1. Eigenwert
 CharExRe2Cor(~CharExRe1_NegIdx) = CharExReNeg(~CharExRe1_NegIdx); % Ersetze negative Werte durch gespiegelte positive EW
 
 tableCharPrint.RealCharExp1Corrected = CharExRe1Cor;
-tableCharPrint.ImagCharExp1Corrected = CharExIm(:,1); % Erster Wert
 tableCharPrint.RealCharExp2Corrected = CharExRe2Cor;
-tableCharPrint.ImagCharExp2Corrected = -CharExIm(:,1);
+
+% Raw imaginary parts (same ordering issues as real parts)
+CharExIm1 = CharExIm(:,1);
+CharExIm2 = CharExIm(:,Blatt+1);
+
+CharExIm1Cor = CharExIm1;
+CharExIm2Cor = CharExIm2;
+
+% At each mu step, assign imaginary parts to follow the larger/smaller 
+% real part branch, consistent with how CharExRe1Cor/CharExRe2Cor were built
+for k = 1:length(mu_paramVec)
+    if CharExRe1Cor(k) == CharExRe1(k)
+        % Col1 is already the correct branch, no swap needed
+        CharExIm1Cor(k) = CharExIm1(k);
+        CharExIm2Cor(k) = -CharExIm1(k);
+    else
+        % Col1 was swapped in real part correction, so swap imaginary too
+        CharExIm1Cor(k) = -CharExIm2(k);
+        CharExIm2Cor(k) = CharExIm2(k);
+    end
+end
+
+% Add to table for export
+tableCharPrint.ImagCharExp1Corrected = CharExIm1Cor;
+tableCharPrint.ImagCharExp2Corrected = CharExIm2Cor;
 
 excelDir = 'excelDir';
 if ~isfolder(excelDir)
@@ -290,13 +298,15 @@ writetable(tableCharPrint,excelfilename1);
 figure(100);
 ax1(1) = subplot(2,1,1);
 plot(MuMin:SW:MuMax,CharExRe(:,1),'*-', MuMin:SW:MuMax,CharExRe(:,b1),'o-',...
-    MuMin:SW:MuMax,CharExIm(:,1),'*-',MuMin:SW:MuMax,CharExIm(:,b1),'o-');
+    MuMin:SW:MuMax,CharExIm(:,1),'*-',MuMin:SW:MuMax,CharExIm(:,b1),'o-',...
+    MuMin:SW:MuMax,CharExImRaw(:,1),'*-',MuMin:SW:MuMax,CharExImRaw(:,b1),'o-');
 legend('Re(Exp1)', sprintf('Re(Exp%d)',b1),'Im(Exp1)',sprintf('Im(Exp%d)',b1),...
+    'ImRaw(Exp1)',sprintf('ImRaw(Exp%d)',b1),...
     'Location','SouthWest'); grid on;
 title(sprintf('Auswahl: %d; Blatt: %d', Auswahl, Blatt));
 ax1(2) = subplot(2,1,2);
 plot(MuMin:SW:MuMax,CharExRe1Cor,'*-', MuMin:SW:MuMax,CharExRe2Cor,'o-',...
-    MuMin:SW:MuMax,CharExIm(:,1),'*-',MuMin:SW:MuMax,-CharExIm(:,1),'o-');
+    MuMin:SW:MuMax, CharExIm1Cor,'*-',MuMin:SW:MuMax,CharExIm2Cor,'o-');
 grid on;
 linkaxes(ax1,'x')
 
