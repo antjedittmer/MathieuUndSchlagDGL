@@ -10,6 +10,11 @@ if Blatt==1
     a21 = -1;
     a22 = 0;
 
+        %     % Dynamic Matrix
+        % D_func = @(t) [0, 1;
+        %     -( p_sq + (gamma/8) * ( (4*mu/3)*cos(t) + (mu^2)*sin(2*t) ) ), ...
+        %     - (gamma/8) * (1 + (4*mu/3)*sin(t))];
+
     A = -[a11,a12;
          a21,a22];
 elseif Blatt == 3
