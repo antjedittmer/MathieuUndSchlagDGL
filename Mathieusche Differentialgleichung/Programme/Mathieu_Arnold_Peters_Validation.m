@@ -1,5 +1,5 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Mathieu_Floquet_Verification.m (Fixed Periodicity, Diagnostics & SVG Save)
+% Mathieu_Floquet_Verification.m (Periodicity, Diagnostics & SVG Save)
 %
 % Task: Reconstruct x(t) (2x63) via Peters V(t) and Arnold s_R, 
 % then validate against direct ODE integration. Saves plots as SVG.
