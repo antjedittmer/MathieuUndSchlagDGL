@@ -337,7 +337,7 @@ end
 
 % Define thresholds and constants
 gap_threshold = 0.01;
-peak_prominence = 0.05;
+peak_prominence = 0.01;
 allModes = 0;
 
 % Sort all rows descending to find dominant branches
