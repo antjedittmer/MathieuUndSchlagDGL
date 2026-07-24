@@ -24,6 +24,7 @@ clc; clear; close all;
 D = 0.15;                       % Damping ratio
 nuInputList = [0.5, 5, 8];      % Frequency parameters (nu_0 = nu_C)
 mFactorList = [0.5, 2, 2.5];    % Arnold addition factors for the shift
+mFactorArgmax = [0.5, 1.0, 1.5]; % 
 T = 2*pi;                       % Parametric period (T = 2*pi)
 t0 = 0;
 tGrid = 0:0.1:2*pi;             % 63 distinct timesteps (1x63 vector)
