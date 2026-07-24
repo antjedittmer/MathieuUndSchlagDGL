@@ -11,6 +11,7 @@ if ~isdir(fDirPeters)
     mkdir(fDirPeters);
 end
 
+
 %% === GLOBAL PARAMETERS ===
 Omega = 1;
 T = 2*pi/Omega;
