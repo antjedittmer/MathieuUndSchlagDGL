@@ -181,12 +181,40 @@ else
     nuChange = nu_vals(idx_m_change);   % positions of the vertical marker lines
 
 
-    save('mathieuFloquetCombined.mat', 'nu_vals', 'D', 'm_range', ...
+    save(dataDirPeters, 'nu_vals', 'D', 'm_range', ...
         'real_all', 'branch_freqs_all', 'participation_data', ...
         'omega_arnold', 'composite_freq', 'freq_argmax', ...
         'sortedIndex', 'diffSorted', 'pksC', 'locsC', 'pksD', 'locsD', ...
         'm_bubble', 'm_modpart', 'nuChange', 'idx_m_change');
 end
+
+% Dominant branch index per sample (recomputed here so it also exists
+% when data is loaded from the .mat file).
+% Tie-break rule: inside locked regions, branches m and -m-1 carry
+% (near-)identical participation. Among all branches within tolTie of
+% the maximum participation, select the one with the LARGER frequency,
+% computed per branch as  f(m) = |m| + sign(m)*omega  (with m = 0 -> omega),
+% where omega is the positive principal frequency (the m = 0 branch).
+tolTie = 0.01;      % participation tolerance for "nearly identical"
+n = length(nu_vals);
+omega0 = branch_freqs_all(:, m_range == 0);   % |Im(s_R)| principal, in [0, 0.5]
+
+signM = sign(m_range);
+signM(m_range == 0) = 1;                      % m = 0 -> frequency omega itself
+tieFreq = abs(m_range) + omega0 * signM;      % n x length(m_range)
+
+iMax = zeros(n,1);
+for k = 1:n
+    vmax = max(participation_data(k,:));
+    cand = find(participation_data(k,:) >= vmax - tolTie);
+    [~, j] = max(tieFreq(k, cand));
+    iMax(k) = cand(j);
+end
+
+% Recompute the argmax frequency from the tie-broken index so panels 2
+% and 4 show the same branch identity (values coincide where branches
+% are degenerate, so this only fixes identity, not information)
+freq_argmax = branch_freqs_all(sub2ind(size(branch_freqs_all), (1:n)', iMax));
 
 %% === COMBINED FIGURE: 5 stacked axes ===
 nc = size(unique(lines,'rows'),1); % Numbers of different colors: nc = 7
@@ -243,17 +271,21 @@ ylabel('Frequency \omega');
 legend(hBr, 'Location','eastoutside','Box','off'); grid on; axis tight;
 set(gca, 'XTickLabel', []);
 
-% In-plot labels for the overlay curves (adjust coordinates to taste)
+% In-plot labels for the overlay curves, with tight white backgrounds
+% ('Margin' in points; 0.5-1 is as tight as it renders)
+bcVec = [1 1 1 0.7];
 text(6.35, interp1(nu_vals, omega_arnold, 8.35) + 0.46, ...
-    '\omega_1 = Im(s_{R1})', 'Color', 'b', 'FontSize', 11);
-%text(7.30, interp1(nu_vals, composite_freq, 7.30) - 0.55, ...
-%    '\omega_{mean}', 'Color', 'k', 'FontSize', 11);
+    '\omega_1 = Im(s_{R1})', 'Color', 'b', 'FontSize', 11, ...
+    'BackgroundColor', bcVec , 'Margin', 0.1);
 text(3.60, interp1(nu_vals, freq_argmax, 3.60) - 0.60, ...
-    '\omega_{max}', 'Color', 0.4*ones(1,3), 'FontSize', 13,'FontWeight','bold');
+    '\omega_{max}', 'Color', 0.4*ones(1,3), 'FontSize', 13, ...
+    'FontWeight', 'bold', 'BackgroundColor', bcVec , 'Margin', 0.1);
 text(nu_vals(locsC(3)) - 2, pksC(3) + 0.75, ...
-    'freq. peaks of \omega_{max}', 'Color', 'k', 'FontSize', 11);
+    'freq. peaks \omega_{max} ', 'Color', 'k', 'FontSize', 11, ...
+    'BackgroundColor', bcVec , 'Margin', 0.1);
 text(nu_vals(locsC(1)) - 0.6, pksC(1) + 0.75, ...
-    '\omega_{mean}', 'Color', 'k', 'FontSize', 11,'FontWeight','bold');
+    '\omega_{mean}', 'Color', 'k', 'FontSize', 11, 'FontWeight', 'bold', ...
+    'BackgroundColor', bcVec ,'Margin', 0.1);
 
 % --- Axis 3: Differences w.r.t. Im(s_R) (Arnold) ---
 axList(3) = nexttile;
@@ -267,7 +299,7 @@ ylabel('Difference \Delta\omega');
 legend('Location','eastoutside','Box','off'); grid on; axis tight;
 set(gca, 'XTickLabel', []);
 
-% --- Axis 4: Harmonic participation + Mode 1/2 highlight + gap peaks ---
+% --- Axis 4: Harmonic participation, dominant branch highlighted ---
 axList(4) = nexttile;
 hPart = gobjects(length(m_range),1);
 for idx = 1:size(participation_data,2)
@@ -278,26 +310,45 @@ for idx = 1:size(participation_data,2)
         'DisplayName', sprintf('m = %d', m_range(idx)));
     hold on;
 end
-hM1 = plot(nu_vals, sortedIndex(:,1), 'r-', 'LineWidth', 1, ...
-    'HandleVisibility','off');
-hM2 = plot(nu_vals, sortedIndex(:,2), 'b--', 'LineWidth', 1, ...
-    'HandleVisibility','off');
+
+% DOMINANT branch highlighted: wherever branch idx has the highest
+% participation (sticky argmax), its curve segment is drawn solid in its
+% own bright branch color -> directly explains the omega_max line in
+% panel 2. NaN elsewhere breaks the line into segments automatically.
+domCurve = nan(length(nu_vals), length(m_range));
+for idx = 1:length(m_range)
+    mask = (iMax == idx);
+    domCurve(mask, idx) = participation_data(mask, idx);
+end
+for idx = 1:length(m_range)
+    if any(~isnan(domCurve(:,idx)))
+        idxC = mod(idx-1,size(cl,1)) + 1;
+        plot(nu_vals, domCurve(:,idx), '-', 'LineWidth', 1.7, ...
+            'Color', cl(idxC,:), 'HandleVisibility','off');
+    end
+end
+
+% Gap dynamics between the two dominant harmonics and its peaks
 hD  = plot(nu_vals, diffSorted, 'k-.', 'LineWidth', 1, ...
     'HandleVisibility','off');
 hDp = plot(nu_vals(locsD), diffSorted(locsD), 'ko', 'MarkerFaceColor', 'k', ...
     'MarkerSize', 5, 'HandleVisibility','off');
+
 ylabel('Mod. Part. \phi');
-% Legend: only the m-branches; overlay curves are labeled by in-plot text
+% Legend: only the m-branches (thin lines); the thick bright segments use
+% the same colors, marking where each branch is the dominant one
 legend(hPart, 'Location','eastoutside','Box','off'); grid on; axis tight;
 set(gca, 'XTickLabel', []);
 
-% In-plot labels for the overlay curves (adjust coordinates to taste)
-text(0.45, 0.88, 'Mode 1: \phi_{max}', 'Color', 'r', 'FontSize', 10);
-text(1.60, 0.64, 'Mode 2: \phi_{2nd}', 'Color', 'b', 'FontSize', 10);
-text(3.30, 0.32, '\Delta = \phi_{max} - \phi_{2nd}', 'Color', 'k', 'FontSize', 10);
+% In-plot labels (adjust coordinates to taste)
+text(0.45, 0.85, 'bold: dominant branch \phi_{max}', 'Color', 'k', ...
+    'FontSize', 10, 'BackgroundColor', bcVec, 'Margin', 0.1);
+text(0.6, 0.7, '\Delta = \phi_{max} - \phi_{2nd}', 'Color', 'k', ...
+    'FontSize', 10, 'BackgroundColor', bcVec, 'Margin', 1);
 if ~isempty(locsD)
-    text(nu_vals(locsD(1)) + 0.15, diffSorted(locsD(1)) + 0.07, ...
-        '\Delta peaks', 'Color', 'k', 'FontSize', 10);
+    text(nu_vals(locsD(3)) + 0.5, diffSorted(locsD(3)) + 0.35, ...
+        'peaks \Delta', 'Color', 'k', 'FontSize', 10, ...
+        'BackgroundColor', bcVec, 'Margin', 1);
 end
 
 % --- Axis 5: Winding numbers ---
@@ -313,7 +364,7 @@ legend('Location','eastoutside','Box','off'); grid on; axis tight;
 
 % Explanation of the vertical lines (placed once, in the last panel)
 text(0.30, 0.90*max(m_bubble), 'vertical lines: change of m', ...
-    'Color', clVert, 'FontSize', 10);
+    'Color', clVert, 'FontSize', 10, 'BackgroundColor', 'w', 'Margin', 1);
 
 % --- Dark blue vertical lines at every m-change, in ALL panels ---
 for iAx = 1:5
