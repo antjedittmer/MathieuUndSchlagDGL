@@ -206,33 +206,84 @@ end
 % Stage 3 only ever chooses among branches whose participation AND
 % frequency agree within tolerance, i.e. where the omega_max VALUE is
 % unaffected and only the color label was arbitrary.
-tolTie  = 0.01;     % participation tolerance for "nearly identical"
-tolFreq = 0.02;     % frequency tolerance for "tied" branch frequencies
+% tolTie  = 0.005;     % participation tolerance for "nearly identical"
+% tolFreq = 0.005;     % frequency tolerance for "tied" branch frequencies
+% n = length(nu_vals);
+% omega0 = branch_freqs_all(:, m_range == 0);   % |Im(s_R)| principal, in [0, 0.5]
+% 
+% signM = sign(m_range);
+% signM(m_range == 0) = 1;                      % m = 0 -> frequency omega itself
+% tieFreq = abs(m_range) + omega0 * signM;      % n x length(m_range)
+% 
+% iMax = zeros(n,1);
+% 
+% distPart = [3.5:-1:0.5,0:4]; 
+% participation_data_augmented = participation_data + distPart *0.01;
+% 
+% for k = 1:n
+%     % Stage 1: candidates by participation
+%     vmax = max(participation_data_augmented(k,:));
+%     cand = find(participation_data_augmented(k,:) >= vmax - tolTie);
+%     % Stage 2: among them, keep those with (near-)largest frequency
+%     fC = tieFreq(k, cand);
+%     candF = cand(fC >= max(fC) - tolFreq);
+%     % Stage 3: among frequency-tied twins, pick the branch closest to
+%     % omega(Arnold)
+%     [~, jj] = min(abs(tieFreq(k, candF) - omega_arnold(k)));
+%     iMax(k) = candF(jj);
+% end
+
+% tolPart = 0.10;
+% tolDist = 1e-6;
+% Kord = 2*abs(m_range) - (m_range < 0);   % order 0,-1,+1,-2,+2,-3,...
+% n = length(nu_vals);
+% iMax = zeros(n,1);
+% for k = 1:n
+%     vmax  = max(participation_data(k,:));
+%     cand  = find(participation_data(k,:) >= vmax - tolPart);
+%     d     = abs(branch_freqs_all(k,cand) - omega_arnold(k));
+%     candD = cand(d <= min(d) + tolDist);
+%     [~, jj] = max(Kord(candD));
+%     iMax(k) = candD(jj);
+% end
+% freq_argmax = branch_freqs_all(sub2ind(size(branch_freqs_all), (1:n)', iMax));
+
+
+% distPart = [3.5:-1:0.5, 0:4];   % ranking 0, -1, +1, -2, +2, -3, ... over m_range = -4:4
+% tolPart  = 0.10;                % participation window (mid-lock drift reaches ~0.06)
+% tolDist  = 1e-6;
+% n = length(nu_vals);
+% iMax = zeros(n,1);
+% for k = 1:n
+%     % 1) candidates: branches within tolPart of the maximum participation
+%     vmax  = max(participation_data(k,:));
+%     cand  = find(participation_data(k,:) >= vmax - tolPart);
+%     % 2) keep those whose frequency is closest to omega(Arnold)
+%     d     = abs(branch_freqs_all(k,cand) - omega_arnold(k));
+%     candD = cand(d <= min(d) + tolDist);
+%     % 3) exact ties = locked twins -> your distPart ranking decides
+%     [~, jj] = max(distPart(candD));
+%     iMax(k) = candD(jj);
+% end
+% freq_argmax = branch_freqs_all(sub2ind(size(branch_freqs_all), (1:n)', iMax));
+
+distPart = [3.5:-1:0.5, 0:4];
 n = length(nu_vals);
-omega0 = branch_freqs_all(:, m_range == 0);   % |Im(s_R)| principal, in [0, 0.5]
-
-signM = sign(m_range);
-signM(m_range == 0) = 1;                      % m = 0 -> frequency omega itself
-tieFreq = abs(m_range) + omega0 * signM;      % n x length(m_range)
-
 iMax = zeros(n,1);
 for k = 1:n
-    % Stage 1: candidates by participation
-    vmax = max(participation_data(k,:));
-    cand = find(participation_data(k,:) >= vmax - tolTie);
-    % Stage 2: among them, keep those with (near-)largest frequency
-    fC = tieFreq(k, cand);
-    candF = cand(fC >= max(fC) - tolFreq);
-    % Stage 3: among frequency-tied twins, pick the branch closest to
-    % omega(Arnold)
-    [~, jj] = min(abs(tieFreq(k, candF) - omega_arnold(k)));
-    iMax(k) = candF(jj);
+    [~, i0] = max(participation_data(k,:));
+    cand = find(abs(participation_data(k,:) - participation_data(k,i0)) < 1e-9 & ...
+                abs(branch_freqs_all(k,:)   - branch_freqs_all(k,i0))   < 1e-9);
+    [~, jj] = max(distPart(cand));
+    iMax(k) = cand(jj);
 end
+freq_argmax = branch_freqs_all(sub2ind(size(branch_freqs_all), (1:n)', iMax));
+
 
 % Recompute the argmax frequency from the tie-broken index so panels 2
 % and 4 show the same branch identity (values coincide where branches
 % are degenerate, so this only fixes identity, not information)
-freq_argmax = branch_freqs_all(sub2ind(size(branch_freqs_all), (1:n)', iMax));
+%freq_argmax = branch_freqs_all(sub2ind(size(branch_freqs_all), (1:n)', iMax));
 
 %% === COMBINED FIGURE: 5 stacked axes ===
 nc = size(unique(lines,'rows'),1); % Numbers of different colors: nc = 7
