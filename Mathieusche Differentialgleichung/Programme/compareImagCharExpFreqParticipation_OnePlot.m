@@ -30,7 +30,7 @@ D = 0.15;
 x0 = eye(2);
 useOldData = 0;
 
-loadData = 1;
+loadData = 0;
 
 %% === 1. LOAD ARNOLD REFERENCE DATA (optional) ===
 dDirA = fullfile('dataFolder', 'dataFolder_Arnold_Classic_Symmetric_test');
@@ -212,68 +212,13 @@ end
 % omega0 = branch_freqs_all(:, m_range == 0);   % |Im(s_R)| principal, in [0, 0.5]
 % 
 % signM = sign(m_range);
-% signM(m_range == 0) = 1;                      % m = 0 -> frequency omega itself
-% tieFreq = abs(m_range) + omega0 * signM;      % n x length(m_range)
-% 
-% iMax = zeros(n,1);
-% 
-% distPart = [3.5:-1:0.5,0:4]; 
-% participation_data_augmented = participation_data + distPart *0.01;
-% 
-% for k = 1:n
-%     % Stage 1: candidates by participation
-%     vmax = max(participation_data_augmented(k,:));
-%     cand = find(participation_data_augmented(k,:) >= vmax - tolTie);
-%     % Stage 2: among them, keep those with (near-)largest frequency
-%     fC = tieFreq(k, cand);
-%     candF = cand(fC >= max(fC) - tolFreq);
-%     % Stage 3: among frequency-tied twins, pick the branch closest to
-%     % omega(Arnold)
-%     [~, jj] = min(abs(tieFreq(k, candF) - omega_arnold(k)));
-%     iMax(k) = candF(jj);
-% end
-
-% tolPart = 0.10;
-% tolDist = 1e-6;
-% Kord = 2*abs(m_range) - (m_range < 0);   % order 0,-1,+1,-2,+2,-3,...
-% n = length(nu_vals);
-% iMax = zeros(n,1);
-% for k = 1:n
-%     vmax  = max(participation_data(k,:));
-%     cand  = find(participation_data(k,:) >= vmax - tolPart);
-%     d     = abs(branch_freqs_all(k,cand) - omega_arnold(k));
-%     candD = cand(d <= min(d) + tolDist);
-%     [~, jj] = max(Kord(candD));
-%     iMax(k) = candD(jj);
-% end
-% freq_argmax = branch_freqs_all(sub2ind(size(branch_freqs_all), (1:n)', iMax));
-
-
-% distPart = [3.5:-1:0.5, 0:4];   % ranking 0, -1, +1, -2, +2, -3, ... over m_range = -4:4
-% tolPart  = 0.10;                % participation window (mid-lock drift reaches ~0.06)
-% tolDist  = 1e-6;
-% n = length(nu_vals);
-% iMax = zeros(n,1);
-% for k = 1:n
-%     % 1) candidates: branches within tolPart of the maximum participation
-%     vmax  = max(participation_data(k,:));
-%     cand  = find(participation_data(k,:) >= vmax - tolPart);
-%     % 2) keep those whose frequency is closest to omega(Arnold)
-%     d     = abs(branch_freqs_all(k,cand) - omega_arnold(k));
-%     candD = cand(d <= min(d) + tolDist);
-%     % 3) exact ties = locked twins -> your distPart ranking decides
-%     [~, jj] = max(distPart(candD));
-%     iMax(k) = candD(jj);
-% end
-% freq_argmax = branch_freqs_all(sub2ind(size(branch_freqs_all), (1:n)', iMax));
 
 distPart = [3.5:-1:0.5, 0:4];
 n = length(nu_vals);
 iMax = zeros(n,1);
 for k = 1:n
     [~, i0] = max(participation_data(k,:));
-    cand = find(abs(participation_data(k,:) - participation_data(k,i0)) < 1e-9 & ...
-                abs(branch_freqs_all(k,:)   - branch_freqs_all(k,i0))   < 1e-9);
+    cand = find(abs(participation_data(k,:) - participation_data(k,i0)) < 0.001);
     [~, jj] = max(distPart(cand));
     iMax(k) = cand(jj);
 end
@@ -390,8 +335,13 @@ end
 domCurve = nan(length(nu_vals), length(m_range));
 for idx = 1:length(m_range)
     mask = (iMax == idx);
-    domCurve(mask, idx) = participation_data(mask, idx);
+    %domCurve(mask, idx) = participation_data(mask, idx);
+    maskExt = mask | [false; mask(1:end-1)] | [mask(2:end); false];
+    domCurve(maskExt, idx) = participation_data(maskExt, idx);
 end
+
+participation_data_sel = participation_data(sub2ind(size(participation_data), (1:n)', iMax));
+
 for idx = 1:length(m_range)
     if any(~isnan(domCurve(:,idx)))
         idxC = mod(idx-1,size(cl,1)) + 1;
@@ -425,6 +375,8 @@ end
 
 % --- Axis 5: Winding numbers ---
 axList(5) = nexttile;
+
+% m_argmax as dots, colored by the dominant branch (same colors as domCurve)
 plot(nu_vals, m_bubble, '-', 'Color', 'b', 'LineWidth', 1, ...
     'DisplayName', 'm bubble');
 hold on;
