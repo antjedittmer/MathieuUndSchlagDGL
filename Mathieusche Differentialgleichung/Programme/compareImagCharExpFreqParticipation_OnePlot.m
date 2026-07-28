@@ -30,7 +30,7 @@ D = 0.15;
 x0 = eye(2);
 useOldData = 0;
 
-loadData = 0;
+loadData = 1;
 
 %% === 1. LOAD ARNOLD REFERENCE DATA (optional) ===
 dDirA = fullfile('dataFolder', 'dataFolder_Arnold_Classic_Symmetric_test');
@@ -188,47 +188,34 @@ else
         'm_bubble', 'm_modpart', 'nuChange', 'idx_m_change');
 end
 
-%% === DOMINANT BRANCH INDEX (three-stage tie-break) ===
-% Recomputed here so it also exists when data is loaded from the .mat file.
-%
-% Inside locked regions the twin branches m and -m-1 are DOUBLY degenerate:
-% their participations are (near-)identical AND their frequencies coincide
-% exactly (e.g. f(0) = omega = 0.5 and f(-1) = 1 - omega = 0.5). A plain
-% argmax and a frequency-based tie-break therefore both pick an arbitrary
-% twin. Resolution in three stages, each only active when the previous one
-% is genuinely ambiguous:
-%   Stage 1: candidates = branches within tolTie of the max participation
-%   Stage 2: among them, keep those with (near-)largest branch frequency,
-%            f(m) = |m| + sign(m)*omega  (with m = 0 -> omega)
-%   Stage 3: among frequency-tied twins, pick the branch whose frequency
-%            is closest to omega(Arnold); this fixes the identity inside
-%            the lock and hands over to the continuing branch at exit.
-% Stage 3 only ever chooses among branches whose participation AND
-% frequency agree within tolerance, i.e. where the omega_max VALUE is
-% unaffected and only the color label was arbitrary.
-% tolTie  = 0.005;     % participation tolerance for "nearly identical"
-% tolFreq = 0.005;     % frequency tolerance for "tied" branch frequencies
-% n = length(nu_vals);
-% omega0 = branch_freqs_all(:, m_range == 0);   % |Im(s_R)| principal, in [0, 0.5]
-% 
-% signM = sign(m_range);
+%% === DOMINANT BRANCH INDEX ===
+% Plain argmax on the participation, with a relabel only among branches
+% whose participation is numerically indistinguishable (the locked twins
+% m and -m-1). The ranking distPart = 0, 0.5, 1, 1.5, ... over
+% m = 0, -1, +1, -2, +2, ... decides which twin gets the label; this
+% changes the color/labelling but not the selected FREQUENCY, since tied
+% twins share the same branch frequency.
+distPart = [3.5:-1:0.5, 0:4];    % height of each branch m = -4 ... +4
+tolTie   = 0.001;                % participation tolerance for "identical"
+n    = length(nu_vals);
+mAll = length(m_range);
 
-distPart = [3.5:-1:0.5, 0:4];
-n = length(nu_vals);
 iMax = zeros(n,1);
 for k = 1:n
     [~, i0] = max(participation_data(k,:));
-    cand = find(abs(participation_data(k,:) - participation_data(k,i0)) < 0.001);
+    cand = find(abs(participation_data(k,:) - participation_data(k,i0)) < tolTie);
     [~, jj] = max(distPart(cand));
     iMax(k) = cand(jj);
 end
+iMax = iMax(:);
+
 freq_argmax = branch_freqs_all(sub2ind(size(branch_freqs_all), (1:n)', iMax));
 
-
-% Recompute the argmax frequency from the tie-broken index so panels 2
-% and 4 show the same branch identity (values coincide where branches
-% are degenerate, so this only fixes identity, not information)
-%freq_argmax = branch_freqs_all(sub2ind(size(branch_freqs_all), (1:n)', iMax));
+% Addition factor implied by the dominant-participation rule: each branch
+% is assigned its own distPart height (m = 0 -> 0, m = -1 -> 0.5,
+% m = +1 -> 1, m = -2 -> 1.5, m = +2 -> 2, ...)
+m_argmax = distPart(iMax);
+m_argmax = m_argmax(:);          % distPart is a row vector -> force column
 
 %% === COMBINED FIGURE: 5 stacked axes ===
 nc = size(unique(lines,'rows'),1); % Numbers of different colors: nc = 7
@@ -262,7 +249,7 @@ set(gca, 'XTickLabel', []);
 
 % --- Axis 2: Frequency branches + Arnold, centroid, argmax, peaks ---
 axList(2) = nexttile;
-hBr = gobjects(length(m_range),1);
+hBr = gobjects(mAll,1);
 for idx = 1:size(branch_freqs_all,2)
     idxLs = mod(idx-1,length(lsCell)) + 1;
     idxC  = mod(idx-1,size(cl,1)) + 1;
@@ -318,7 +305,7 @@ set(gca, 'XTickLabel', []);
 
 % --- Axis 4: Harmonic participation, dominant branch highlighted ---
 axList(4) = nexttile;
-hPart = gobjects(length(m_range),1);
+hPart = gobjects(mAll,1);
 for idx = 1:size(participation_data,2)
     idxLs = mod(idx-1,length(lsCell)) + 1;
     idxC  = mod(idx-1,size(cl,1)) + 1;
@@ -329,20 +316,19 @@ for idx = 1:size(participation_data,2)
 end
 
 % DOMINANT branch highlighted: wherever branch idx has the highest
-% participation (three-stage tie-break), its curve segment is drawn solid
-% in its own bright branch color -> directly explains the omega_max line
-% in panel 2. NaN elsewhere breaks the line into segments automatically.
-domCurve = nan(length(nu_vals), length(m_range));
-for idx = 1:length(m_range)
+% participation, its curve segment is drawn solid in its own bright branch
+% color -> directly explains the omega(phi_max) line in panel 2. The mask
+% is extended by one sample on each side so consecutive segments touch.
+domCurve = nan(n, mAll);
+for idx = 1:mAll
     mask = (iMax == idx);
-    %domCurve(mask, idx) = participation_data(mask, idx);
     maskExt = mask | [false; mask(1:end-1)] | [mask(2:end); false];
     domCurve(maskExt, idx) = participation_data(maskExt, idx);
 end
 
 participation_data_sel = participation_data(sub2ind(size(participation_data), (1:n)', iMax));
 
-for idx = 1:length(m_range)
+for idx = 1:mAll
     if any(~isnan(domCurve(:,idx)))
         idxC = mod(idx-1,size(cl,1)) + 1;
         plot(nu_vals, domCurve(:,idx), '-', 'LineWidth', 1.7, ...
@@ -376,19 +362,39 @@ end
 % --- Axis 5: Winding numbers ---
 axList(5) = nexttile;
 
-% m_argmax as dots, colored by the dominant branch (same colors as domCurve)
 plot(nu_vals, m_bubble, '-', 'Color', 'b', 'LineWidth', 1, ...
     'DisplayName', 'm bubble');
 hold on;
 plot(nu_vals, m_modpart, '--', 'Color', 'k', 'LineWidth', 1, ...
     'DisplayName', 'm Peters');
+
+% Addition factor from the dominant participation: dots at the distPart
+% height of the selected branch, in the SAME colors as the bold segments
+% in panel 4 (m = 0 -> 0, m = -1 -> 0.5, m = +1 -> 1, m = -2 -> 1.5, ...)
+mArgCurve = nan(n, mAll);
+for idx = 1:mAll
+    mArgCurve(iMax == idx, idx) = distPart(idx);
+end
+for idx = 1:mAll
+    if any(~isnan(mArgCurve(:,idx)))
+        idxC = mod(idx-1,size(cl,1)) + 1;
+        plot(nu_vals, mArgCurve(:,idx), '.', 'Color', cl(idxC,:), ...
+            'MarkerSize', 12, 'HandleVisibility','off');
+    end
+end
+% dummy handle so the dots get one neutral legend entry
+plot(NaN, NaN, '.', 'Color', 0.4*ones(1,3), 'MarkerSize', 12, ...
+    'DisplayName', 'm(\phi_{max})');
+
 ylabel('Add. factor m');
-xlabel('Amplification factor \nu_c^2 = \nu_0^2');
+xlabel('Periodic coefficient \nu_c^2 = \nu_0^2');
 legend('Location','eastoutside','Box','off'); grid on; axis tight;
 
 % Explanation of the vertical lines (placed once, in the last panel)
-text(2.5, 0.25*max(m_bubble), 'vertical lines: change of m', ...
-    'Color', clVert, 'FontSize', 10, 'BackgroundColor', 'w', 'Margin', 1);
+%text(0.1, 0.85*max(m_bubble), 'vertical lines:', ...
+%    'Color', clVert, 'FontSize', 10, 'BackgroundColor', 'w', 'Margin', 1);
+%text(0.1, 0.7*max(m_bubble), 'change of m', ...
+%    'Color', clVert, 'FontSize', 10, 'BackgroundColor', 'w', 'Margin', 1);
 
 
 % --- Dark blue vertical lines at every m-change, in ALL panels ---
@@ -401,10 +407,6 @@ for iAx = 1:5
             'Color', clVert, 'LineWidth', 1, 'HandleVisibility', 'off');
     end
     ylim(axList(iAx), yl);                  % restore (lines sit exactly on limits)
-    % bring all text boxes of this panel in front of the vertical lines
-    % ch = axList(iAx).Children;
-    % isTxt = arrayfun(@(h) isa(h, 'matlab.graphics.primitive.Text'), ch);
-    % axList(iAx).Children = [ch(isTxt); ch(~isTxt)];
 end
 
 % Create arrow
@@ -446,9 +448,11 @@ table4Excel.diff_centroid_arnold = composite_freq - omega_arnold;
 table4Excel.diff_argmax_arnold = freq_argmax - omega_arnold;
 table4Excel.m_bubble = m_bubble;
 table4Excel.m_modpart = m_modpart;
+table4Excel.m_argmax = m_argmax;
+table4Excel.m_sel_index = m_range(iMax)';
 
-colNames = cell(1, length(m_range));
-for i = 1:length(m_range)
+colNames = cell(1, mAll);
+for i = 1:mAll
     m = m_range(i);
     if m < 0
         colNames{i} = sprintf('freq_branch_m_neg_%d', abs(m));
