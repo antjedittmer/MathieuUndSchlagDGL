@@ -46,7 +46,7 @@ Blatt            = AuswahlInfo{Auswahl, 2};
 rotorDescription = AuswahlInfo{Auswahl, 3};
 
 AnzGl  = 2 * Blatt;
-b1     = Blatt + 1;
+b1     = AnzGl;
 nPairs = Blatt;
 
 fprintf('Running: Auswahl %d — %s\n', Auswahl, rotorDescription);
@@ -79,6 +79,7 @@ CharMult    = zeros(nMu, AnzGl + 1);
 CharExRe    = zeros(nMu, AnzGl);
 CharExIm    = zeros(nMu, AnzGl);
 CharExImRaw = zeros(nMu, AnzGl);
+CharEx      = zeros(nMu, AnzGl*6);
 cond_A      = nan(nMu, 1);
 
 buffer.Pos  = zeros(nPairs, 1);
@@ -104,10 +105,17 @@ for mu_param = mu_vec
     charMultSort = charMult(idxSort);
 
     CharMult(idx, :) = [charMultSort, mu_param];
+    if mu_param == 0
+        Im0 = 1/T * angle(charMultSort);
+    end
 
-    Eig.Real = real(log(charMultSort)) / T;
-    Eig.Imag = imag(log(charMultSort)) / T;
-    Eig.ImagSort = zeros(1, AnzGl);
+   % Charakteristische Exponenten
+            Eig.Real = 1/T * log(abs(charMultSort));
+            Eig.Imag = 1/T * atan(imag(charMultSort) ./ real(charMultSort));
+
+            % correctImagValues paarweise
+            ImagCorrected    = zeros(1, nPairs);
+            ImagCorrectedNeg = zeros(1, nPairs);
 
     for idxC = 1:nPairs
         idxVec         = 2*idxC-1 : 2*idxC;
@@ -120,13 +128,18 @@ for mu_param = mu_vec
         Eig.Real(idxVec)     = EigTemp.Real;
         Eig.Imag(idxVec)     = EigTemp.Imag;
         Eig.ImagSort(idxVec) = EigTemp.ImagSort;
+        ImagCorrected(idxC)    = EigTemp.ImagCorrected;
+        ImagCorrectedNeg(idxC) = EigTemp.ImagCorrectedNeg;
         buffer.Pos(idxC)     = bufferTemp.Pos;
     end
+    Eig.ImagCorrected    = ImagCorrected;
+    Eig.ImagCorrectedNeg = ImagCorrectedNeg;
 
     absDiffCharMult = abs(CharMult(idx, 1)) > abs(CharMult(idx, b1));
 
     if idx > 1 && abs(prevAbsDiffCharMult - absDiffCharMult) > 0.1
         nShift = nShift + 0.5;
+       
     end
 
     prevAbsDiffCharMult = absDiffCharMult;
@@ -134,9 +147,13 @@ for mu_param = mu_vec
     nAdd    = nShift * 2 * pi / T;
     nAddVec = [-nAdd * ones(1, nPairs), nAdd * ones(1, nPairs)];
 
-    CharExRe(idx, :)    = Eig.Real;
-    CharExIm(idx, :)    = Eig.Imag + nAddVec;
-    CharExImRaw(idx, :) = Eig.Imag;
+    ImagEigSortN = [Eig.ImagCorrectedNeg, Eig.ImagCorrected] + nAddVec;
+
+            CharEx(idx,:)     = [Eig.Real, Eig.Imag, Eig.ImagSort, ImagEigSortN, ...
+                                  real(charMultSort), imag(charMultSort)];
+            CharExRe(idx,:)    = Eig.Real;
+            CharExIm(idx,:)    = Eig.Imag + nAddVec;
+            CharExImRaw(idx,:) = Eig.Imag;
 
     idx = idx + 1;
 end
@@ -274,7 +291,7 @@ for kMu = 1:nMu
     v_mode   = V(:, mode_idx);
 
     [~, idxMax] = max(abs(v_mode));
-    v_mode = (v_mode / v_mode(idxMax)) * exp(-1i * angle(v_mode(idxMax)));
+    v_mode = v_mode / abs(v_mode(idxMax));
 
     eta_mode_prev = eta_mode;
 
@@ -426,33 +443,89 @@ end
 
 
 
+% %% =========================================================================
+% %% 10. SCATTER PLOT: REAL VS IMAGINARY PARTS ON SAME AXES
+% %% =========================================================================
+% figScatter = figure('Name', 'Characteristic Exponents in Complex Plane', 'Color', 'w');
+% figScatter.Position = [pos0(1), pos0(2)-0.15*pos0(4), pos0(3), 1.15*pos0(4)];
+% 
+% scatter(CharExRe1Cor(:), CharExIm1Cor(:), 40, mu_vec(:), 'o', ...
+%     'DisplayName', 's_{R1} = \sigma_1 + i\omega_1');
+% hold on;
+% scatter(CharExRe2Cor(:), CharExIm2Cor(:), 40, mu_vec(:), '*', ...
+%     'DisplayName', 's_{R2} = \sigma_2 + i\omega_2');
+% 
+% grid on;
+% xlabel('Real part characteristic exponent \sigma')
+% ylabel('Pos. imag. part characteristic exponent \omega')
+% title(sprintf('Real vs. Imag. Parts Char. Exponents (%s)', rotorDescription))
+% set(findall(gcf,'-property','FontSize'),'FontSize',12)
+% 
+% cb = colorbar;
+% cb.Label.String = 'Advance ratio \mu';
+% 
+% legend('Location','southoutside','Orientation','horizontal','FontSize',12);
+% legend boxoff
+% 
+% saveas(figScatter, fullfile(figDir, sprintf('real_vs_imaginary_exponents_rotor_Auswahl%d.png', Auswahl)));
+
 %% =========================================================================
-%% 10. SCATTER PLOT: REAL VS IMAGINARY PARTS ON SAME AXES
+%% 10. SCATTER PLOTS: PRINCIPAL BRANCH VS TRACKED BRANCH
 %% =========================================================================
+
+% Principal-branch exponents for the selected pair
+% These are mathematically consistent but not physically unique in frequency.
+CharExRe1_principal = CharExRe(:, 1);
+CharExRe2_principal = CharExRe(:, Blatt + 1);
+
+% IMPORTANT:
+% CharExImRaw contains the principal imaginary part from log(lambda)/T
+CharExIm1_principal = CharExImRaw(:, 1);
+CharExIm2_principal = CharExImRaw(:, Blatt + 1);
+
 figScatter = figure('Name', 'Characteristic Exponents in Complex Plane', 'Color', 'w');
-figScatter.Position = [pos0(1), pos0(2)-0.15*pos0(4), pos0(3), 1.15*pos0(4)];
+figScatter.Position = [pos0(1), pos0(2)-0.15*pos0(4), 1.25*pos0(3), 1.05*pos0(4)];
 
-scatter(CharExRe1Cor(:), CharExIm1Cor(:), 40, mu_vec(:), 'o', ...
-    'DisplayName', 's_{R1} = \sigma_1 + i\omega_1');
+tlSc = tiledlayout(1,2, 'TileSpacing', 'compact', 'Padding', 'compact');
+
+% -------------------------------------------------------------------------
+% LEFT: principal branch
+% -------------------------------------------------------------------------
+axS1 = nexttile;
+scatter(CharExRe1_principal(:), CharExIm1_principal(:), 38, mu_vec(:), 'o', ...
+    'DisplayName', 'Exp1 principal');
 hold on;
-scatter(CharExRe2Cor(:), CharExIm2Cor(:), 40, mu_vec(:), '*', ...
-    'DisplayName', 's_{R2} = \sigma_2 + i\omega_2');
-
+scatter(CharExRe2_principal(:), CharExIm2_principal(:), 38, mu_vec(:), '^', ...
+    'DisplayName', sprintf('Exp%d principal', Blatt+1));
 grid on;
-xlabel('Real part characteristic exponent \sigma')
-ylabel('Pos. imag. part characteristic exponent \omega')
-title(sprintf('Real vs. Imag. Parts Char. Exponents (%s)', rotorDescription))
-set(findall(gcf,'-property','FontSize'),'FontSize',12)
+xlabel('Real part characteristic exponent \sigma');
+ylabel('Imaginary part \omega (principal branch)');
+title('Principal-branch Floquet exponents');
+legend('Location','southoutside','Orientation','horizontal');
+cb1 = colorbar;
+cb1.Label.String = 'Advance ratio \mu';
 
-cb = colorbar;
-cb.Label.String = 'Advance ratio \mu';
+% -------------------------------------------------------------------------
+% RIGHT: tracked branch
+% -------------------------------------------------------------------------
+axS2 = nexttile;
+scatter(CharExRe1Cor(:), CharExIm1Cor(:), 38, mu_vec(:), 'o', ...
+    'DisplayName', 'Exp1 tracked');
+hold on;
+scatter(CharExRe2Cor(:), CharExIm2Cor(:), 38, mu_vec(:), '^', ...
+    'DisplayName', sprintf('Exp%d tracked', Blatt+1));
+grid on;
+xlabel('Real part characteristic exponent \sigma');
+ylabel('Imaginary part \omega (tracked branch)');
+title('Tracked Floquet branch visualization');
+legend('Location','southoutside','Orientation','horizontal');
+cb2 = colorbar;
+cb2.Label.String = 'Advance ratio \mu';
 
-legend('Location','southoutside','Orientation','horizontal','FontSize',12);
-legend boxoff
+set(findall(figScatter,'-property','FontSize'),'FontSize',12)
 
-saveas(figScatter, fullfile(figDir, sprintf('real_vs_imaginary_exponents_rotor_Auswahl%d.png', Auswahl)));
-
-
+saveas(figScatter, fullfile(figDir, ...
+    sprintf('real_vs_imaginary_exponents_rotor_Auswahl%d.png', Auswahl)));
 %% =========================================================================
 %% 11. FILE EXPORT SYSTEM (.XLSX & .MAT STORAGE)
 %% =========================================================================
