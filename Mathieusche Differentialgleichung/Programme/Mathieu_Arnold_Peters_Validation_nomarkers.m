@@ -27,9 +27,9 @@ clc; clear; close all;
 
 %% 1. User Settings & Inputs
 D = 0.15;                        % Damping ratio
-nuInputList = 0.5; %[0.5, 5, 8];       % Amplification factors nu_c^2 (= nu_0^2)
-mFactorList = 0.5; %[0.5, 2, 2.5];     % Arnold addition factors for the shift
-mFactorArgmax = 0.5;%[0.5, 1.0, 1.5]; % Addition factors implied by dominant
+nuInputList = [0.5, 5, 8];       % Amplification factors nu_c^2 (= nu_0^2)
+mFactorList = [0.5, 2, 2.5];     % Arnold addition factors for the shift
+mFactorArgmax = [0.5, 1.0, 1.5]; % Addition factors implied by dominant
 % modal participation (argmax rule);
 % case 1 coincides with Arnold
 Tvec = [2*pi, 4*pi];                        % Parametric period (T = T)
@@ -51,12 +51,25 @@ opts = odeset('RelTol', 1e-10, 'AbsTol', 1e-12);
 AllResults = struct();
 structIdx = 1;
 
-strX = {'0', '\pi/2', '\pi', '3\pi/2', '2\pi'};
-
 %% 2. Execution Loop across Parameter Cases
 for TvecIdx = 2 %1: length(Tvec)
     Tlen = Tvec(TvecIdx);
     tGrid = 0:0.1:Tlen;              % 63 distinct timesteps (1x63 vector)
+    
+    % Generate correct x-axis labels based on period Tlen
+    ticks = 0:pi/2:Tlen;
+    strX = cell(1, length(ticks));
+    for i = 1:length(ticks)
+        k = round(ticks(i) / (pi/2));
+        if k == 0
+            strX{i} = '0';
+        elseif mod(k, 2) == 0
+            strX{i} = sprintf('%d\\pi', k/2);
+        else
+            strX{i} = sprintf('%d\\pi/2', k);
+        end
+    end
+    
     for caseIdx = 1:length(nuInputList)
         nuIn = nuInputList(caseIdx);
         m_factor = mFactorList(caseIdx);
@@ -425,12 +438,100 @@ for TvecIdx = 2 %1: length(Tvec)
                 'FontSize', 11);
             set(gca, 'XTick', 0:pi/2:Tlen, ...
                 'XTickLabel', strX);
-            xlim([0 T]);
+            xlim([0 Tlen]);
         end
 
         baseNameG = sprintf('Mathieu_Factors_Case_%d_nu_%.1f_IC_%d', caseIdx, nuIn, icIdx);
         baseNameG = strrep(baseNameG, '.', 'dot');
         print(hFigG, fullfile(fDir, [baseNameG, '.svg']), '-dsvg');
+
+%% Step H: Frequency content (FFT amplitude) of the eigenvector matrix V(t)
+% The FFT runs over EXACTLY one window [0, Tlen) with the endpoint excluded,
+% so the bin spacing is Omega*T/Tlen. With Tlen = 4*pi this is 0.5/rev, i.e.
+% integer AND half-integer harmonics are resolved:
+%   integer m      -> V is T-periodic       -> only integer harmonics
+%   half-integer m -> V is anti-periodic    -> only half-integer harmonics
+NfftV = 1024;
+tF = linspace(0, Tlen, NfftV+1); tF(end) = [];   % endpoint excluded
+dn  = T/Tlen;                                    % bin spacing in units of Omega
+nAxis = (-(NfftV/2):(NfftV/2-1)) * dn;
+nShow = 4.5;                                     % displayed harmonic range
+
+% transition matrix on the FFT grid
+solB = cell(1,Nz);
+for k = 1:Nz
+    solB{k} = ode45(@(t,x) MathieuDGL_task(t, x, D, nu02, nuC2), [t0, Tlen], I2(:,k), opts);
+end
+Phi_F = zeros(Nz,Nz,NfftV);
+for k = 1:Nz
+    Yk = deval(solB{k}, tF);
+    Phi_F(:,k,:) = reshape(Yk, Nz, 1, NfftV);
+end
+
+% V(t) for each addition factor on the FFT grid (order matches Step G)
+sVar  = {s_P, s_R, s_A};
+VfSet = cell(1,nVar);
+for v = 1:nVar
+    sv = sVar{v};
+    Vtmp = zeros(Nz,Nz,NfftV);
+    for j = 1:NfftV
+        Vtmp(:,:,j) = Phi_F(:,:,j) * V0 * ...
+            diag([exp(-sv(1)*tF(j)), exp(-sv(2)*tF(j))]);
+    end
+    VfSet{v} = Vtmp;
+end
+
+% --- Figure: amplitude spectra, rows of V x columns (modes) ---
+hFigH = figure('Name', sprintf('Case %d FFT of V(t)', caseIdx), ...
+    'Color', [1 1 1], 'Position', [120 120 900 650]);
+tiledlayout(2, 2, 'TileSpacing', 'compact', 'Padding', 'compact');
+
+rowLab = {'|FFT| of V(1,:)  position row', '|FFT| of V(2,:)  velocity row'};
+for row = 1:2
+    for col = 1:2
+        nexttile; hold on; grid on;
+        hL = gobjects(1, nVar);
+        for v = 1:nVar
+            q = squeeze(VfSet{v}(row,col,:));
+            A = abs(fftshift(fft(q)/NfftV)).';        % row vector
+            sel = abs(nAxis) <= nShow;
+            % small x-offset per variant so coinciding lines stay visible
+            hL(v) = stem(nAxis(sel) + (v-2)*0.05, A(sel), 'filled', ...
+                'Color', colVar{v}, 'MarkerSize', 3, 'LineWidth', 1.2);
+        end
+        xlim([-nShow nShow]); xticks(-4:4);
+        if row == 2
+            xlabel('Harmonic order n  [\times \Omega]', 'FontSize', 11);
+        else
+            set(gca, 'XTickLabel', {});
+        end
+        ylabel(rowLab{row}, 'FontSize', 10);
+        title(sprintf('mode %d', col), 'FontSize', 10);
+        if row == 1 && col == 1
+            legend(hL, varName{1:nVar}, 'Location', 'best');
+        end
+    end
+end
+sgtitle(sprintf('\\nu_c^2 = %.1f:  harmonic content of the periodic eigenvector V(t)', ...
+    nuIn), 'FontSize', 12, 'FontWeight', 'bold');
+
+baseNameH = sprintf('Mathieu_FFT_V_Case_%d_nu_%.1f', caseIdx, nuIn);
+baseNameH = strrep(baseNameH, '.', 'dot');
+print(hFigH, fullfile(fDir, [baseNameH, '.svg']), '-dsvg');
+
+% --- Numeric output: significant harmonics of V(1,:) ---
+fprintf('  Harmonic content of V(1,:) (amplitudes > 1e-4):\n');
+for v = 1:nVar
+    for col = 1:2
+        q = squeeze(VfSet{v}(1,col,:));
+        A = abs(fftshift(fft(q)/NfftV)).';
+        sel = abs(nAxis) <= 4 & A > 1e-4;
+        fprintf('    %-22s mode %d: ', varName{v}, col);
+        fprintf('n=%+.1f: %.4f  ', [nAxis(sel); A(sel)]);
+        fprintf('\n');
+    end
+end
+
     end
 end
 
