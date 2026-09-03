@@ -14,14 +14,6 @@
 % Parameters:
 %   D = 0.15
 %   nu_0^2 = nu_C^2 = 0.25 and 5
-%
-% FIX vs. previous version: MathieuDGL's actual equations only match the
-% state convention x(1)=phi, x(2)=phi_dot (same as phase_planeWindingplots.m's
-% MathieuDGLsubfun, which this function is copied from) -- NOT
-% x(1)=phi_dot, x(2)=phi as the old comment/Row-1 extraction assumed. The
-% Row-1 extraction lines below are swapped accordingly so phi_mon/phidot_mon
-% now match what MathieuDGL actually computes, and are consistent with the
-% phi_pp/phidot_pp extraction already used for Rows 2-3.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 clc;
 clear;
@@ -56,8 +48,8 @@ for idx = 1:length(nu_squared_vals)
     sol_mon = ode45(@(psi,x) MathieuDGL(psi, x, D, nu_02, nu_C2), ...
                     [t0, T], x0_monodromy, options);
     y_mon   = deval(sol_mon, tspan);
-    phi_mon    = y_mon(1,:)';  % phi (position)      -- FIXED (was y_mon(2,:))
-    phidot_mon = y_mon(2,:)';  % phi_dot (velocity)   -- FIXED (was y_mon(1,:))
+    phi_mon    = y_mon(1,:)';  % phi (position)    
+    phidot_mon = y_mon(2,:)';  % phi_dot (velocity)   
 
     % === Row 2 & 3 data: phase plane and angle ===
     [psi_sol, sol_raw] = ode45(@(psi,x) MathieuDGL(psi, x, D, nu_02, nu_C2), ...
@@ -139,7 +131,7 @@ sgtitle('Task 1: Combined winding-number visualization ($\nu_0^2 = \nu_C^2 = 0.2
 % if ~isfolder(fDir)
 %     mkdir(fDir);
 % end
-% fileName = fullfile(fDir, 'Task1_CombinedFigure_nu0dot25_5.svg');
+% fileName = fullfile(fDir, 'CombinedFigure_nu0dot25_5.svg');
 % exportgraphics(fig, fileName, 'ContentType', 'vector');
 % disp('Task 1: Combined 3x2 figure created and saved.');
 
@@ -148,8 +140,8 @@ sgtitle('Task 1: Combined winding-number visualization ($\nu_0^2 = \nu_C^2 = 0.2
 % phi'' + 2*D*phi' + (nu_0^2 + nu_C^2*cos(psi))*phi = 0
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function dxdpsi = MathieuDGL(psi, x, D, nu_02, nu_C2)
-% x(1) = phi (position)     -- FIXED comment (matches equations below)
-% x(2) = phi_dot (velocity) -- FIXED comment
+% x(1) = phi (position)     
+% x(2) = phi_dot (velocity) 
 K_psi = nu_02 + nu_C2 * cos(psi);
 dxdpsi = [x(2); -2*D*x(2) - K_psi*x(1)];
 end
