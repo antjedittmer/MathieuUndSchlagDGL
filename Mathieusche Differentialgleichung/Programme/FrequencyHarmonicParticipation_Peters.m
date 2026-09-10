@@ -59,16 +59,16 @@ for w = w_values
     % --- PART 1: Floquet Frequency (computation only) ---
     % =====================================================================
     eps_vals = linspace(0, eps_end, eps_no);
-    m_range = (-4:4); % Integer multiple range for plotting branches (m*Omega)
+    m_range = (-4:4); % Integer multiple range for plotting branches (n*Omega)
 
-    % Structure to hold results, organized by branch 'm'
+    % Structure to hold results, organized by branch 'n'
     results_by_branch = struct();
-    for m = m_range
+    for n = m_range
         % Create a valid field name
-        if m < 0
-            field_name = ['m_neg_', num2str(abs(m))];
+        if n < 0
+            field_name = ['m_neg_', num2str(abs(n))];
         else
-            field_name = ['m_', num2str(m)];
+            field_name = ['m_', num2str(n)];
         end
         results_by_branch.(field_name) = []; % Initialize with empty array
     end
@@ -93,20 +93,20 @@ for w = w_values
         % Choose one root (the 'basis frequency' / principal value)
         basis_freq_r = normalized_omega(1);
 
-        % --- Separate and Store Branches (m) ---
-        for m = m_range
-            % This formula reconstructs the full frequency based on the integer m and basis frequency.
-            % omega/Omega = abs(m) + sign(m) * (basis_freq_r/Omega)
-            if m==0
+        % --- Separate and Store Branches (n) ---
+        for n = m_range
+            % This formula reconstructs the full frequency based on the integer n and basis frequency.
+            % omega/Omega = abs(n) + sign(n) * (basis_freq_r/Omega)
+            if n==0
                 branch_freq = basis_freq_r;
             else
-                branch_freq = abs(m) *Omega + sign(m) *basis_freq_r;
+                branch_freq = abs(n) *Omega + sign(n) *basis_freq_r;
             end
             % Determine the valid field name
-            if m < 0
-                field_name = ['m_neg_', num2str(abs(m))];
+            if n < 0
+                field_name = ['m_neg_', num2str(abs(n))];
             else
-                field_name = ['m_', num2str(m)];
+                field_name = ['m_', num2str(n)];
             end
             % Store [epsilon, frequency] for this specific branch
             results_by_branch.(field_name) = [results_by_branch.(field_name); epsilon, branch_freq];
@@ -119,7 +119,7 @@ for w = w_values
     N_FFT = 4096;    % Number of points for accurate FFT computation (power of 2)
     N_eps = 400;     % Number of epsilon steps for continuation
     eps_vals_harm = linspace(0, eps_end, N_eps); % Same range as Part 1
-    % Harmonics to track: m=-3..+3.
+    % Harmonics to track: n=-3..+3.
     m_range_harm = m_range;
     % Color map for plotting
     colors = lines(length(m_range_harm));
@@ -168,11 +168,11 @@ for w = w_values
         C = fftshift(fft(Q_t_disp) / N_FFT); % Fourier coefficients
         freq_indices = (-N_FFT/2 : N_FFT/2 - 1);
         frequencies = freq_indices / T;
-        % Extract the magnitude of the desired harmonics (m*Omega)
+        % Extract the magnitude of the desired harmonics (n*Omega)
         harmonic_magnitudes_raw = zeros(size(m_range_harm));
         for i = 1:length(m_range_harm)
-            m = m_range_harm(i);
-            target_freq = m * (1 / T); % Target frequency is m * Omega
+            n = m_range_harm(i);
+            target_freq = n * (1 / T); % Target frequency is n * Omega
             [~, idx] = min(abs(frequencies - target_freq));
             harmonic_magnitudes_raw(i) = abs(C(idx));
         end
@@ -207,20 +207,20 @@ for w = w_values
         'FontSize', 14, 'Interpreter', 'latex');
     ylabel(ax1, 'Frequency ($\omega/\Omega$)', 'FontSize', 14, 'Interpreter', 'latex');
     idx = 1;
-    for m = m_range
+    for n = m_range
         % Determine field name
-        if m < 0
-            field_name = ['m_neg_', num2str(abs(m))];
+        if n < 0
+            field_name = ['m_neg_', num2str(abs(n))];
         else
-            field_name = ['m_', num2str(m)];
+            field_name = ['m_', num2str(n)];
         end
         % --- Legend Calculation ---
-        if m >= 0
-            freq_normalized = omega0/Omega + m;
+        if n >= 0
+            freq_normalized = omega0/Omega + n;
         else
-            freq_normalized = abs(m) - omega0/Omega;
+            freq_normalized = abs(n) - omega0/Omega;
         end
-        freq_str = sprintf('$m=%+d \\rightarrow \\omega/\\Omega \\approx %.1f$', m, freq_normalized);
+        freq_str = sprintf('$n=%+d \\rightarrow \\omega/\\Omega \\approx %.1f$', n, freq_normalized);
         % Get data for plotting
         data = results_by_branch.(field_name);
         current_color = color_map(idx, :);
@@ -277,10 +277,10 @@ for w = w_values
 
     % Combine all data points for plotting
     all_data_matrix = vertcat(all_participation_points{:});
-    % Plot each harmonic (m) as a separate curve
+    % Plot each harmonic (n) as a separate curve
     jump_threshold = 0.2;
     unique_m = unique(all_data_matrix(:, 3));
-    % Match line colors to the harmonic index 'm'
+    % Match line colors to the harmonic index 'n'
     m_index_map = containers.Map(unique_m, 1:length(unique_m));
     for i = 1:length(unique_m)
         m_val = unique_m(i);
@@ -303,7 +303,7 @@ for w = w_values
         else % ColoredLines
             line_color = colors(m_index_map(m_val),:);
         end
-        % Plot the curve for harmonic m (no DisplayName: legend lives in subplot 1)
+        % Plot the curve for harmonic n (no DisplayName: legend lives in subplot 1)
         plot(ax2, eps_nan, phi_nan, '-', ...
             'Color', line_color, ...
             'LineWidth', 1.5, ...
