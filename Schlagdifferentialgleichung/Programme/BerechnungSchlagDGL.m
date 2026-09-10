@@ -3,7 +3,7 @@ clc; clear variables; close all;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Initialisierung
 
-SW     = 0.1;
+SW     = 0.01;
 t0     = 0.0;
 T      = 2*pi;
 plotAll = 0;
@@ -73,7 +73,7 @@ for Auswahl = 7
     if exist(filename, 'file') == 2 && loadMat
         fileVars = who('-file', filename);
         if all(ismember({'CharExRe1Cor','CharExRe2Cor','CharExIm1Cor','CharExIm2Cor', ...
-                         'CharExRe','CharExIm','tableCharEx'}, fileVars))
+                'CharExRe','CharExIm','tableCharEx'}, fileVars))
             load(filename);
             needsCompute = false;
             fprintf('  Loaded from file.\n');
@@ -186,7 +186,7 @@ for Auswahl = 7
             ImagEigSortN = [Eig.ImagCorrectedNeg, Eig.ImagCorrected] + nAddVec;
 
             CharEx(idx,:)     = [Eig.Real, Eig.Imag, Eig.ImagSort, ImagEigSortN, ...
-                                  real(charMultSort), imag(charMultSort)];
+                real(charMultSort), imag(charMultSort)];
             CharExRe(idx,:)    = Eig.Real;
             CharExIm(idx,:)    = Eig.Imag + nAddVec;
             CharExImRaw(idx,:) = Eig.Imag;
@@ -204,7 +204,7 @@ for Auswahl = 7
         cellImM  = regexp(sprintf('ImagCharMult%02d,', 1:lEig), ',', 'split');
 
         VarNames = ['muChar', cellRe(1:lEig), cellIm(1:lEig), cellImS(1:lEig), ...
-                    cellImSN(1:lEig), cellReM(1:lEig), cellImM(1:lEig)];
+            cellImSN(1:lEig), cellReM(1:lEig), cellImM(1:lEig)];
 
         tableCharEx    = array2table([CharMult(:,end), CharEx], 'VariableNames', VarNames);
         PrintNames     = VarNames(contains(VarNames,'Char'));
@@ -285,8 +285,8 @@ for Auswahl = 7
     plot(mu_vec, CharExRe(:,b1), 'k-.', 'LineWidth', 1);
     grid on; ylabel('Real part (-)');
     legend('Re(Exp1) cor', sprintf('Re(Exp%d) cor', Blatt), ...
-           'Re(Exp1) raw',  sprintf('Re(Exp%d) raw', Blatt), ...
-           'Location','northeastoutside');
+        'Re(Exp1) raw',  sprintf('Re(Exp%d) raw', Blatt), ...
+        'Location','northeastoutside');
 
     ax2(2) = nexttile;
     plot(mu_vec, CharExIm1Cor,   '-',   'Color', cl(1,:), 'LineWidth', 1.5); hold on;
@@ -296,10 +296,44 @@ for Auswahl = 7
     grid on;
     xlabel('Advance ratio \mu (-)'); ylabel('Imaginary part (-)');
     legend('Im(Exp1) cor', sprintf('Im(Exp%d) cor', Blatt), ...
-           'Im(Exp1) raw',  sprintf('Im(Exp%d) raw', Blatt), ...
-           'Location','northeastoutside');
+        'Im(Exp1) raw',  sprintf('Im(Exp%d) raw', Blatt), ...
+        'Location','northeastoutside');
 
     linkaxes(ax2,'x');
+
+    %%%
+    fig3 = figure('Name', 'Characteristic Exponent from Arnold''s Method (500 points)', 'Color', 'w');
+    fig3.Position = [pos0(1), pos0(2)- 0.15*pos0(4), pos0(3), 1.15*pos0(4)];
+
+    % Exponent 1: large filled circles, edge in cl(1,:)
+scatter(CharExRe1Cor, abs(CharExIm1Cor), 110, mu_vec, 'o', 'filled', ...
+    'MarkerEdgeColor', cl(1,:), 'LineWidth', 0.5, ...
+    'DisplayName','\sigma_1 + i |\omega_1|');
+hold on;
+% Exponent 2: smaller filled circles, edge in cl(2,:) -> overlap stays visible
+scatter(CharExRe2Cor, abs(CharExIm2Cor), 35, mu_vec, 'd', 'filled', ...
+    'MarkerEdgeColor', cl(2,:), 'LineWidth', 0.5, ...
+    'DisplayName','\sigma_2 + i |\omega_2|');
+grid on;
+ylimOrig = get(gca,'YLim');
+set(gca,'YLim',...
+    [0*min(abs(CharExIm2Cor)), max(abs(CharExIm2Cor))+ 0.1*min(abs(CharExIm2Cor))])
+
+    xlabel('Real part characteristic exponent \sigma')
+    ylabel('Pos. imag. part characteristic exponent \omega')
+
+    title('Real vs. Imag. Parts Char. Exponents (Arnold''s Method)')
+    set(findall(gcf,'-property','FontSize'),'FontSize',12)
+    cb = colorbar;
+    cb.Label.String = 'Advance ratio \mu';
+
+    lgd = legend('Location','southoutside','Orientation','horizontal','FontSize',12);
+    legend boxoff
+
+    pngname = sprintf('real_vs_imaginary_exponents_Mathieu_Arnold.png');
+    pngfile = fullfile(figDir, pngname);
+    saveas(fig3, pngfile);
+
 
 end % Auswahl loop
 
@@ -311,22 +345,22 @@ end
 figure(100);
 ax1(1) = subplot(2,1,1);
 plot(MuMin:SW:MuMax, CharExRe(:,1),     '*-', ...
-     MuMin:SW:MuMax, CharExRe(:,b1),    'o-', ...
-     MuMin:SW:MuMax, CharExIm(:,1),     '*-', ...
-     MuMin:SW:MuMax, CharExIm(:,b1),    'o-', ...
-     MuMin:SW:MuMax, CharExImRaw(:,1),  '*-', ...
-     MuMin:SW:MuMax, CharExImRaw(:,b1), 'o-');
+    MuMin:SW:MuMax, CharExRe(:,b1),    'o-', ...
+    MuMin:SW:MuMax, CharExIm(:,1),     '*-', ...
+    MuMin:SW:MuMax, CharExIm(:,b1),    'o-', ...
+    MuMin:SW:MuMax, CharExImRaw(:,1),  '*-', ...
+    MuMin:SW:MuMax, CharExImRaw(:,b1), 'o-');
 legend('Re(Exp1)',sprintf('Re(Exp%d)',b1),'Im(Exp1)',sprintf('Im(Exp%d)',b1), ...
-       'ImRaw(Exp1)',sprintf('ImRaw(Exp%d)',b1),'Location','SouthWest');
+    'ImRaw(Exp1)',sprintf('ImRaw(Exp%d)',b1),'Location','SouthWest');
 grid on;
 %title(sprintf('Auswahl: %d; Blatt: %d', Auswahl, Blatt));
 title(tl, {sprintf('Auswahl: %d; Blatt: %d', Auswahl, Blatt), rotorDescription},'FontSize', 9);
 
 ax1(2) = subplot(2,1,2);
 plot(MuMin:SW:MuMax, CharExRe1Cor, '*-', ...
-     MuMin:SW:MuMax, CharExRe2Cor, 'o-', ...
-     MuMin:SW:MuMax, CharExIm1Cor, '*-', ...
-     MuMin:SW:MuMax, CharExIm2Cor, 'o-');
+    MuMin:SW:MuMax, CharExRe2Cor, 'o-', ...
+    MuMin:SW:MuMax, CharExIm1Cor, '*-', ...
+    MuMin:SW:MuMax, CharExIm2Cor, 'o-');
 grid on;
 linkaxes(ax1,'x');
 
@@ -335,7 +369,7 @@ lineCell = {'-','--','-.','-','--','-.'};
 for idx = 1:Blatt
     if Blatt > 1; subplot(Blatt,1,idx); end
     plot(MuMin:SW:MuMax, CharExRe(:,idx),      lineCell{idx}, ...
-         MuMin:SW:MuMax, CharExRe(:,idx+Blatt), lineCell{idx+Blatt});
+        MuMin:SW:MuMax, CharExRe(:,idx+Blatt), lineCell{idx+Blatt});
     grid on;
     legend(cellRe([idx, idx+Blatt]));
     if idx == 1

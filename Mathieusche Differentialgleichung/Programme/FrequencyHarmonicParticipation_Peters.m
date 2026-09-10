@@ -1,5 +1,5 @@
-% Combined Script: Floquet Frequency Plot (Figure 2) and Harmonic Participation Plot (Figure 3)
-% for Mathieu's Equation.
+% Combined Script: Floquet Frequency and Harmonic Participation
+% in ONE figure with TWO subplots, for Mathieu's Equation.
 %
 % Based on:
 % David A. Peters, Sydnie M. Lieb, Loren A. Ahaus
@@ -16,7 +16,9 @@ fDirPeters = fullfile(fDir,'figureFolderPeters'); % Subfolder specific to Peters
 if ~isdir(fDirPeters) %#ok<ISDIR>
     mkdir(fDirPeters)
 end
+
 % Plotting style selection
+useTextNo = 0;
 K = 'ColoredLines';
 % K = 'BlackLines';
 useK = strcmp(K,'BlackLines');
@@ -38,14 +40,7 @@ for w = w_values
         omega0 = basis_freq_mod;
     end
 
-    % =====================================================================
-    % --- PART 1: Floquet Frequency Plot (Figure 2 Appearance) ---
-    % =====================================================================
-
-    % Filename generation for saving the plot
-    pngname = strrep(sprintf('PetersFrequency%s_w%1.1f',K,w),'.','dot');
-    pngfile = fullfile(fDirPeters,[pngname,'.png']);
-    % Determine the range of epsilon (x-axis limit)
+    % --- Common epsilon range for BOTH subplots (shared x-axis) ---
     if abs(w - 0.3) < 0.001
         eps_end = 5;
         eps_no = 1000; % High resolution for w=0.3
@@ -56,6 +51,13 @@ for w = w_values
         eps_end = 3.5;
         eps_no = 150;
     end
+    % Filename generation for the combined plot
+    pngname = strrep(sprintf('PetersCombined%s_w%1.1f',K,w),'.','dot');
+    pngfile = fullfile(fDirPeters,[pngname,'.svg']);
+
+    % =====================================================================
+    % --- PART 1: Floquet Frequency (computation only) ---
+    % =====================================================================
     eps_vals = linspace(0, eps_end, eps_no);
     m_range = (-4:4); % Integer multiple range for plotting branches (m*Omega)
 
@@ -77,7 +79,7 @@ for w = w_values
     for k = 1:length(eps_vals)
         epsilon = eps_vals(k);
         % State-space form: d{x}/dt = [D(t)]{x}
-        D_func = @(t) [0, 1; -(w_sq + epsilon*sin(Omega*t)), 0];
+        D_func = @(t) [0, 1; -(w_sq + epsilon*cos(Omega*t)), 0];
         % Solve for the Transition Matrix Phi(t)
         [~, Phi_t] = ode45(@(t, x) reshape(D_func(t) * reshape(x, 2, 2), 4, 1), [0, T], reshape(x0, 4, 1));
         Phi_T = reshape(Phi_t(end, :), 2, 2); % Monodromy Matrix at Phi(T)
@@ -111,111 +113,14 @@ for w = w_values
         end
     end
 
-    % -----------------------------------------------------------------------
-    % --- Plotting (Part 1: Floquet Frequency) ---
-    % -----------------------------------------------------------------------
-    figure;
-    hold on;
-    color_map = lines;
-    color_map = [color_map(1:7,:);0*ones(1,3);0.5*ones(1,3)];
-    % Title Update
-    ode_str = '$\dot{x} + (w^2 + \epsilon\sin(\Omega t)) x = 0$';
-    w_str = num2str(w, '%1.1f');
-    new_title = {'Frequency vs. $\epsilon$, ', [ode_str, ', $w = ', w_str, '$ ($\Omega = 1$ rad/s)']}; % Corrected Omega to 1
-    title(new_title, 'FontSize', 16, 'Interpreter', 'latex');
-    xlabel('$\epsilon$', 'FontSize', 14, 'Interpreter', 'latex');
-    ylabel('Frequency ($\omega/\Omega$)', 'FontSize', 14, 'Interpreter', 'latex');
-    idx = 1;
-    for m = m_range
-        % Determine field name
-        if m < 0
-            field_name = ['m_neg_', num2str(abs(m))];
-        else
-            field_name = ['m_', num2str(m)];
-        end
-        % --- Legend Calculation ---
-        if m >= 0
-            freq_normalized = omega0/Omega + m;
-            freq_str = sprintf('$m=%+d \\rightarrow \\omega/\\Omega \\approx %.1f$', m, freq_normalized);
-        elseif m < 0
-            m_abs = abs(m);
-            freq_normalized = m_abs - omega0/Omega;
-            freq_str = sprintf('$m=%+d \\rightarrow \\omega/\\Omega \\approx %.1f$', m, freq_normalized);
-        end
-        % Get data for plotting
-        data = results_by_branch.(field_name);
-        current_color = color_map(idx, :);
-        % Plotting
-        if useK == 1
-            plot(data(:, 1), data(:, 2), '.', 'Color','k', 'MarkerSize', 8, 'DisplayName', freq_str);
-        else
-             plot(data(:, 1), data(:, 2), '.', 'Color', current_color, 'MarkerSize', 8, 'DisplayName', freq_str);
-        end
-        idx = idx + 1;
-    end
-    % Set Axis limits
-    grid on;
-    set(gca, 'TickLabelInterpreter', 'latex');
-    % Add Legend if colors are used
-    if ~useK
-        legend('Location', 'northeastoutside', 'Interpreter', 'latex');
-    end
-
-    % -----------------------------------------------------------------------
-    % --- Branch Label Annotations (Part 1) ---
-    % -----------------------------------------------------------------------
-    % (Labels are kept as in the original script for replication purposes)
-    hold on;
-    % Left-side labels (ε -> 0)
-    text(0.05, 0.08, '[+0]', 'FontSize', 10, 'Interpreter', 'latex');
-    text(0.05, 0.55, '[-1]', 'FontSize', 10, 'Interpreter', 'latex');
-    text(0.05, 1.08, '[+1]', 'FontSize', 10, 'Interpreter', 'latex');
-    text(0.05, 1.55, '[-2]', 'FontSize', 10, 'Interpreter', 'latex');
-    text(0.05, 2.08, '[+2]', 'FontSize', 10, 'Interpreter', 'latex');
-    text(0.05, 2.55, '[-3]', 'FontSize', 10, 'Interpreter', 'latex');
-    text(0.05, 3.08, '[+3]', 'FontSize', 10, 'Interpreter', 'latex');
-    text(0.05, 3.55, '[-4]', 'FontSize', 10, 'Interpreter', 'latex');
-    % Middle labels (Near the primary instability boundaries)
-    text(1.2, 0.35, '[-1/+0]', 'FontSize', 10, 'Interpreter', 'latex');
-    text(1.2, 1.35, '[-2/+1]', 'FontSize', 10, 'Interpreter', 'latex');
-    text(1.2, 2.35, '[-3/+2]', 'FontSize', 10, 'Interpreter', 'latex');
-    text(1.2, 3.35, '[-4/+3]', 'FontSize', 10, 'Interpreter', 'latex');
-    % --- RIGHT-SIDE LABELS (Secondary Instability Boundaries) ---
-    if abs(w - 0.3) < 0.001
-        % Labels for w = 0.3
-        text(4.0, 0.20, '[+0]', 'FontSize', 10, 'Interpreter', 'latex');
-        text(4.0, 1.20, '[-1/+1]', 'FontSize', 10, 'Interpreter', 'latex');
-        text(4.0, 2.20, '[-2/+2]', 'FontSize', 10, 'Interpreter', 'latex');
-        text(4.0, 3.20, '[-3/+3]', 'FontSize', 10, 'Interpreter', 'latex');
-        text(4.0, 4.20, '[-4/+4]', 'FontSize', 10, 'Interpreter', 'latex');
-    elseif abs(w - 0.7) < 0.001
-        % Labels for w = 0.7
-        text(3.0, 0.20, '[+0]', 'FontSize', 10, 'Interpreter', 'latex');
-        text(3.0, 1.20, '[-1/+1]', 'FontSize', 10, 'Interpreter', 'latex');
-        text(3.0, 2.20, '[-2/+2]', 'FontSize', 10, 'Interpreter', 'latex');
-        text(3.0, 3.20, '[-3/+3]', 'FontSize', 10, 'Interpreter', 'latex');
-        text(3.0, 4.20, '[-4/+4]', 'FontSize', 10, 'Interpreter', 'latex');
-    end
-    % Print to Png file
-    print(pngfile, '-dpng')
-
     % =====================================================================
-    % --- PART 2: Harmonic Modal Participation Plot (Figure 3 Appearance) ---
+    % --- PART 2: Harmonic Modal Participation (computation only) ---
     % =====================================================================
-
-    % Filename generation for saving the plot
-    pngname = strrep(sprintf('PetersHarmonicparticipatio%s_w%2.1f',K,w),'.','dot');
-    pngfile = fullfile(fDirPeters,[pngname,'.png']);
     N_FFT = 4096;    % Number of points for accurate FFT computation (power of 2)
     N_eps = 400;     % Number of epsilon steps for continuation
-    % Adjust eps_end based on w value for cleaner plots
-    eps_end_harm = 5.0;
-    if abs(w - 0.7) < 1e-6
-        eps_end_harm = 3.5; % Axis limit for w=0.7 plot
-    end
-    eps_vals_harm = linspace(0, eps_end_harm, N_eps); % Range of epsilon
+    eps_vals_harm = linspace(0, eps_end, N_eps); % Same range as Part 1
     % Harmonics to track: m=-3..+3.
-    m_range_harm = -3:3;
+    m_range_harm = m_range;
     % Color map for plotting
     colors = lines(length(m_range_harm));
     % Storage for results
@@ -232,7 +137,7 @@ for w = w_values
     for k = 1:N_eps
         epsilon = eps_vals_harm(k);
         % Define the State-Space matrix D(t)
-        D_func = @(t) [0, 1; -(w_sq + epsilon*sin(Omega*t)), 0];
+        D_func = @(t) [0, 1; -(w_sq + epsilon*cos(Omega*t)), 0];
         % Solve for the Transition Matrix Phi(T)
         sol_ode = ode45(@(t, x) reshape(D_func(t) * reshape(x, 2, 2), 4, 1), [0, T], reshape(x0, 4, 1));
         Phi_T = reshape(deval(sol_ode, T), 2, 2); % Monodromy matrix
@@ -286,20 +191,90 @@ for w = w_values
         all_participation_points{k} = current_eps_points;
     end
 
-    % -----------------------------------------------------------------------
-    % --- Plotting Section (Part 2: Harmonic Participation) ---
-    % -----------------------------------------------------------------------
-    figure('Color','w','Units','pixels','Position',[200 200 900 400]);
-    hold on;
-    % --- Title Update ---
-    ode_str = '$\ddot{x} + (w^2 + \epsilon\sin(\Omega t)) x = 0$';
+    % =====================================================================
+    % --- COMBINED FIGURE: two stacked subplots, shared x-axis ---
+    % =====================================================================
+    figure('Color','w','Units','pixels','Position',[200 200 900 600]);
+
+    % ---------------------- Subplot 1: Frequency ------------------------
+    ax1 = subplot(2,1,1);
+    hold(ax1,'on');
+    color_map = lines;
+    color_map = [color_map(1:7,:);0*ones(1,3);0.5*ones(1,3)];
+    ode_str = '$\ddot{x} + (w^2 + \epsilon\cos(\Omega t)) x = 0$';
     w_str = num2str(w, '%1.1f');
-    new_title = ['Harmonic participation, ', ode_str, ', $w = ', w_str, '$ ($\Omega = 1$ rad/s)']; % Corrected Omega to 1
-    title(new_title, 'Interpreter', 'latex');
-    xlabel('$\epsilon$', 'FontSize', 14, 'Interpreter', 'latex');
-    ylabel('Modal Participation', 'FontSize', 14, 'Interpreter', 'latex');
-    grid on;
-    set(gca, 'TickLabelInterpreter', 'latex', 'FontSize', 12);
+    title(ax1, [ode_str, ', $w = ', w_str, '$ ($\Omega = 1$ rad/s)'], ...
+        'FontSize', 14, 'Interpreter', 'latex');
+    ylabel(ax1, 'Frequency ($\omega/\Omega$)', 'FontSize', 14, 'Interpreter', 'latex');
+    idx = 1;
+    for m = m_range
+        % Determine field name
+        if m < 0
+            field_name = ['m_neg_', num2str(abs(m))];
+        else
+            field_name = ['m_', num2str(m)];
+        end
+        % --- Legend Calculation ---
+        if m >= 0
+            freq_normalized = omega0/Omega + m;
+        else
+            freq_normalized = abs(m) - omega0/Omega;
+        end
+        freq_str = sprintf('$m=%+d \\rightarrow \\omega/\\Omega \\approx %.1f$', m, freq_normalized);
+        % Get data for plotting
+        data = results_by_branch.(field_name);
+        current_color = color_map(idx, :);
+        % Plotting
+        if useK == 1
+            plot(ax1, data(:, 1), data(:, 2), '-', 'Color','k', 'MarkerSize', 8, 'LineWidth', 1.5, 'DisplayName', freq_str);
+        else
+            plot(ax1, data(:, 1), data(:, 2), '-', 'Color', current_color, 'MarkerSize', 8, 'LineWidth', 1.5, 'DisplayName', freq_str);
+        end
+        idx = idx + 1;
+    end
+    grid(ax1,'on');
+    axis(ax1,[0 eps_end 0 4.5]);
+    set(ax1, 'TickLabelInterpreter', 'latex', 'FontSize', 12, 'XTickLabel', []);
+
+    if useTextNo == 1
+        % --- Branch Label Annotations (Subplot 1) ---
+        % Left-side labels (eps -> 0)
+        text(ax1, 0.05, 0.08, '[+0]', 'FontSize', 10, 'Interpreter', 'latex');
+        text(ax1, 0.05, 0.55, '[-1]', 'FontSize', 10, 'Interpreter', 'latex');
+        text(ax1, 0.05, 1.08, '[+1]', 'FontSize', 10, 'Interpreter', 'latex');
+        text(ax1, 0.05, 1.55, '[-2]', 'FontSize', 10, 'Interpreter', 'latex');
+        text(ax1, 0.05, 2.08, '[+2]', 'FontSize', 10, 'Interpreter', 'latex');
+        text(ax1, 0.05, 2.55, '[-3]', 'FontSize', 10, 'Interpreter', 'latex');
+        text(ax1, 0.05, 3.08, '[+3]', 'FontSize', 10, 'Interpreter', 'latex');
+        text(ax1, 0.05, 3.55, '[-4]', 'FontSize', 10, 'Interpreter', 'latex');
+        % Middle labels (Near the primary instability boundaries)
+        text(ax1, 1.2, 0.35, '[-1/+0]', 'FontSize', 10, 'Interpreter', 'latex');
+        text(ax1, 1.2, 1.35, '[-2/+1]', 'FontSize', 10, 'Interpreter', 'latex');
+        text(ax1, 1.2, 2.35, '[-3/+2]', 'FontSize', 10, 'Interpreter', 'latex');
+        text(ax1, 1.2, 3.35, '[-4/+3]', 'FontSize', 10, 'Interpreter', 'latex');
+        % --- RIGHT-SIDE LABELS (Secondary Instability Boundaries) ---
+        if abs(w - 0.3) < 0.001
+            x_lab = 4.0;
+        elseif abs(w - 0.7) < 0.001
+            x_lab = 3.0;
+        else
+            x_lab = [];
+        end
+        if ~isempty(x_lab)
+            text(ax1, x_lab, 0.20, '[+0]',    'FontSize', 10, 'Interpreter', 'latex');
+            text(ax1, x_lab, 1.20, '[-1/+1]', 'FontSize', 10, 'Interpreter', 'latex');
+            text(ax1, x_lab, 2.20, '[-2/+2]', 'FontSize', 10, 'Interpreter', 'latex');
+            text(ax1, x_lab, 3.20, '[-3/+3]', 'FontSize', 10, 'Interpreter', 'latex');
+            text(ax1, x_lab, 4.20, '[-4/+4]', 'FontSize', 10, 'Interpreter', 'latex');
+        end
+    end
+    % ------------------ Subplot 2: Modal Participation ------------------
+    ax2 = subplot(2,1,2);
+    hold(ax2,'on');
+    xlabel(ax2, '$\epsilon$', 'FontSize', 14, 'Interpreter', 'latex');
+    ylabel(ax2, 'Modal Participation', 'FontSize', 14, 'Interpreter', 'latex');
+    grid(ax2,'on');
+
     % Combine all data points for plotting
     all_data_matrix = vertcat(all_participation_points{:});
     % Plot each harmonic (m) as a separate curve
@@ -322,63 +297,63 @@ for w = w_values
             eps_nan = [eps_nan(1:jj); NaN; eps_nan(jj+1:end)];
             phi_nan = [phi_nan(1:jj); NaN; phi_nan(jj+1:end)];
         end
-        % --- Legend Calculation ---
-        if m_val >= 0
-            freq_normalized = omega0/Omega + m_val;
-            freq_str = sprintf('$m=%+d \\rightarrow \\omega/\\Omega \\approx %.1f$', m_val, freq_normalized);
-        elseif m_val < 0
-            m_abs = abs(m_val);
-            freq_normalized = m_abs - omega0/Omega;
-            freq_str = sprintf('$m=%+d \\rightarrow \\omega/\\Omega \\approx %.1f$', m_val, freq_normalized);
-        end
         % --- Plotting Style Selection ---
-        line_style = '-';
         if useK % BlackLines
             line_color = 'k';
         else % ColoredLines
             line_color = colors(m_index_map(m_val),:);
         end
-        % Plot the curve for harmonic m
-        plot(eps_nan, phi_nan, line_style, ...
+        % Plot the curve for harmonic m (no DisplayName: legend lives in subplot 1)
+        plot(ax2, eps_nan, phi_nan, '-', ...
             'Color', line_color, ...
             'LineWidth', 1.5, ...
-            'DisplayName', freq_str);
+            'HandleVisibility', 'off');
     end
-    axis([0 eps_end_harm 0 1.0]);
-    set(gca, 'YTick', 0:0.2:1);
-    % --- Add Legend ---
-    if ~useK
-        legend('Location', 'northeastoutside', 'Interpreter', 'latex');
+    axis(ax2,[0 eps_end 0 1.0]);
+    set(ax2, 'TickLabelInterpreter', 'latex', 'FontSize', 12, 'YTick', 0:0.2:1);
+
+    % --- Annotate labels (Subplot 2) ---
+    if useTextNo == 1
+        if abs(w - 0.3) < 1e-6
+            % Labels for w = 0.3
+            text(ax2, 0.25, 0.8,  '[+0]',    'Interpreter', 'latex', 'FontSize', 12, 'FontWeight', 'bold');
+            text(ax2, 0.35, 0.3,  '[-1]',    'Interpreter', 'latex', 'FontSize', 12, 'FontWeight', 'bold');
+            text(ax2, 1.3,  0.45, '[-1/+0]', 'Interpreter', 'latex', 'FontSize', 12, 'FontWeight', 'bold');
+            text(ax2, 1.3,  0.15, '[-2/+1]', 'Interpreter', 'latex', 'FontSize', 12, 'FontWeight', 'bold');
+            text(ax2, 1.7,  0.07, '[-3/+2]', 'Interpreter', 'latex', 'FontSize', 12, 'FontWeight', 'bold');
+            text(ax2, 4.5,  0.18, '[-1/+1]', 'Interpreter', 'latex', 'FontSize', 12, 'FontWeight', 'bold');
+            text(ax2, 4.5,  0.30, '[+0]',    'Interpreter', 'latex', 'FontSize', 12, 'FontWeight', 'bold');
+            text(ax2, 4.0,  0.07, '[-3/+3]', 'Interpreter', 'latex', 'FontSize', 12, 'FontWeight', 'bold');
+            text(ax2, 4.0,  0.15, '[-2/+2]', 'Interpreter', 'latex', 'FontSize', 12, 'FontWeight', 'bold');
+        elseif abs(w - 0.7) < 1e-6
+            % Labels for w = 0.7
+            text(ax2, 0.25, 0.8,  '[-1]',    'Interpreter', 'latex', 'FontSize', 12, 'FontWeight', 'bold');
+            text(ax2, 0.50, 0.3,  '[+0]',    'Interpreter', 'latex', 'FontSize', 12, 'FontWeight', 'bold');
+            text(ax2, 1.3,  0.45, '[-1/+0]', 'Interpreter', 'latex', 'FontSize', 12, 'FontWeight', 'bold');
+            text(ax2, 1.3,  0.20, '[-2/+1]', 'Interpreter', 'latex', 'FontSize', 12, 'FontWeight', 'bold');
+            text(ax2, 1.7,  0.07, '[-3/+2]', 'Interpreter', 'latex', 'FontSize', 12, 'FontWeight', 'bold');
+            text(ax2, 2.9,  0.3,  '[-1/+1]', 'Interpreter', 'latex', 'FontSize', 12, 'FontWeight', 'bold');
+            text(ax2, 2.7,  0.23, '[+0]',    'Interpreter', 'latex', 'FontSize', 12, 'FontWeight', 'bold');
+            text(ax2, 3.0,  0.07, '[-3/+3]', 'Interpreter', 'latex', 'FontSize', 12, 'FontWeight', 'bold');
+            text(ax2, 3.0,  0.15, '[-2/+2]', 'Interpreter', 'latex', 'FontSize', 12, 'FontWeight', 'bold');
+        end
     end
 
-    % -----------------------------------------------------------------------
-    % --- Annotate labels (Part 2) ---
-    % -----------------------------------------------------------------------
-    % (Labels are kept as in the original script for replication purposes)
-    if abs(w - 0.3) < 1e-6
-        % Labels for w = 0.3
-        text(0.25, 0.8, '[+0]', 'Interpreter', 'latex', 'FontSize', 12, 'FontWeight', 'bold');
-        text(0.35, 0.3, '[-1]', 'Interpreter', 'latex', 'FontSize', 12, 'FontWeight', 'bold');
-        text(1.3, 0.45, '[-1/+0]', 'Interpreter', 'latex', 'FontSize', 12, 'FontWeight', 'bold');
-        text(1.3, 0.15, '[-2/+1]', 'Interpreter', 'latex', 'FontSize', 12, 'FontWeight', 'bold');
-        text(1.7, 0.07, '[-3/+2]', 'Interpreter', 'latex', 'FontSize', 12, 'FontWeight', 'bold');
-        text(4.5, 0.18, '[-1/+1]', 'Interpreter', 'latex', 'FontSize', 12, 'FontWeight', 'bold');
-        text(4.5, 0.30, '[+0]', 'Interpreter', 'latex', 'FontSize', 12, 'FontWeight', 'bold');
-        text(4.0, 0.07, '[-3/+3]', 'Interpreter', 'latex', 'FontSize', 12, 'FontWeight', 'bold');
-        text(4.0, 0.15, '[-2/+2]', 'Interpreter', 'latex', 'FontSize', 12, 'FontWeight', 'bold');
-    elseif abs(w - 0.7) < 1e-6
-        % Labels for w = 0.7
-        text(0.25, 0.8, '[-1]', 'Interpreter', 'latex', 'FontSize', 12, 'FontWeight', 'bold');
-        text(0.50, 0.3, '[+0]', 'Interpreter', 'latex', 'FontSize', 12, 'FontWeight', 'bold');
-        text(1.3, 0.45, '[-1/+0]', 'Interpreter', 'latex', 'FontSize', 12, 'FontWeight', 'bold');
-        text(1.3, 0.20, '[-2/+1]', 'Interpreter', 'latex', 'FontSize', 12, 'FontWeight', 'bold');
-        text(1.7, 0.07, '[-3/+2]', 'Interpreter', 'latex', 'FontSize', 12, 'FontWeight', 'bold');
-        text(2.9, 0.3, '[-1/+1]', 'Interpreter', 'latex', 'FontSize', 12, 'FontWeight', 'bold');
-        text(2.7, 0.23, '[+0]', 'Interpreter', 'latex', 'FontSize', 12, 'FontWeight', 'bold');
-        text(3.0, 0.07, '[-3/+3]', 'Interpreter', 'latex', 'FontSize', 12, 'FontWeight', 'bold');
-        text(3.0, 0.15, '[-2/+2]', 'Interpreter', 'latex', 'FontSize', 12, 'FontWeight', 'bold');
+    % --- Layout: single legend right of the upper axes, equal axes widths ---
+    linkaxes([ax1 ax2],'x');
+    if ~useK
+        legend(ax1, 'Location', 'northeastoutside', 'Interpreter', 'latex');
     end
-    hold off;
+    drawnow;
+    p1 = get(ax1,'Position');
+    p2 = get(ax2,'Position');
+    p2([1 3]) = p1([1 3]);      % same left edge and width as upper subplot
+    set(ax2,'Position',p2);
+    % Move subplots slightly closer together
+    p1(2) = p2(2) + p2(4) + 0.06;
+    p1(4) = 0.90 - p1(2);
+    set(ax1,'Position',p1);
+
     % Print to Png file
-    print(pngfile, '-dpng')
+    print(pngfile, '-dsvg')
 end

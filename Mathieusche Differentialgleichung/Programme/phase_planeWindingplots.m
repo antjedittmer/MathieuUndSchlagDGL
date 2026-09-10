@@ -100,7 +100,7 @@ for idx = 1:length(nu_vals)
     baseName1 = sprintf('Task2_PhasePlane_D%0.2f_nu%0.2f', D, nu_02);
     baseName1 = strrep(baseName1, '.', 'dot');
     fileName1 = fullfile(fDirTask2, [baseName1 '.svg']);
-    exportgraphics(fig1, fileName1, 'Resolution', 300);
+%    exportgraphics(fig1, fileName1, 'Resolution', 300);
 
     %% ==============================================================
     % Figure 2: unwrapped angle theta(psi)
