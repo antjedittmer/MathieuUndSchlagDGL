@@ -8,8 +8,8 @@ Im_AllLine = CharExTable.ImagEigNoadditionfactor  + (0:0.5:2.5).*ones(size(CharE
 omega      = sqrt(CharExTable.nu02);
 
 figure; hold on;
-plot(Im_AllLine);
-plot(omega,'k','LineWidth',1.5);
+plot(CharExTable.nu02, Im_AllLine);
+plot(CharExTable.nu02, omega,'k','LineWidth',1.5);
 hold off;
 
 Im_m   = NaN(size(omega));
@@ -26,9 +26,9 @@ for idx = 1:length(omega)
     Im_m_d(idx)          = omega(idx) - Im_m(idx);
 end
 hold on;
-plot(Im_m,'b','LineWidth',1.5);      % blue curve, non-decreasing
-plot(omega,'k--','LineWidth',1.5);   % dashed omega
-plot(CharExTable.ImagEig2, 'r-.');
+plot(CharExTable.nu02, Im_m,'b','LineWidth',1.5);      % blue curve, non-decreasing
+plot(CharExTable.nu02, omega,'k--','LineWidth',1.5);   % dashed omega
+plot(CharExTable.nu02, CharExTable.ImagEig2, 'r:', 'LineWidth',2);
 xlabel('Index');
 ylabel('Value');
 grid on;
