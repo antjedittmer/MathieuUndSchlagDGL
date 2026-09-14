@@ -214,6 +214,34 @@ for dIdx = 1: length(DVec)
     ylabel('$\Im(s_R) \;\; \rm{[-]}$','interpreter','latex','FontSize', fs+2); %'Position', [-0.5 -D]
     pngname = fullfile(fDir,strrep(strrep(strrep(matName,'.mat',''),'STRUTTscheKarte','CharExp'),'_unt0',''));
     print(pngname, '-dpng')
+
+    hold on; grid on;
+
+    %% scatter plots real part char. eponent vs imaginary part
+    figure; 
+    % scatter(real(s_R_full(:)), imag(s_R_full(:)), 12, nu_full(:), 'filled');
+    scatter(CharEx(:,3), CharEx(:,7), 40, xachse, 'filled');
+hold on;
+scatter(CharEx(:,4), CharEx(:,8), 40, xachse, 'd');
+
+    % Vertical backbone at Re(s) = -D
+    xline(-D, 'r--', 'LineWidth', 1.2, 'DisplayName', sprintf('\\sigma = -D = -%.2f', D));
+    xline(0, 'k-', 'LineWidth', 1.0, 'DisplayName', 'Instability Boundary \sigma = 0');
+
+    % Horizontal line at Im(s) = 0 (amplification factor zero)
+    yline(0, 'r--', 'LineWidth', 1.2, 'DisplayName', 'Amplification \nu_0^2 = 0');
+
+    xlim([-0.4 0.15]); 
+    ylim([-3.2 3.2]);
+
+    xlabel('\Re(s_R)', 'FontSize', 12);
+    ylabel('\Im(s_R)', 'FontSize', 12);
+    title('Charakteristische Exponenten s_R', 'FontSize', 13);
+
+    cb2 = colorbar; 
+    cb2.Label.String = '\nu_0^2 = \nu_c^2';
+
+    legend('Location', 'northeast');
 end
 %%
 % This function was part of the original code snippet (appended at the end)
