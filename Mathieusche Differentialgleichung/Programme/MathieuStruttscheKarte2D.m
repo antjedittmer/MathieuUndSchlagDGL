@@ -1,8 +1,8 @@
- %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Berechnung der Struttschen Karten in den Grenzen von nu_02 und nu_C2
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 clc; clear; close all;
-loadMat = 1;  % mat-file laden, wenn Ergebnisse mit gleichem D vorhanden
+loadMat = 0;  % mat-file laden, wenn Ergebnisse mit gleichem D vorhanden
 SW = 0.05; %stepwidth
 unt0 = 0;
 untC = 0;
@@ -13,11 +13,11 @@ if ~isdir(fDir) %#ok<ISDIR>
     mkdir(fDir)
 end
 fDir1 = fullfile(fDir,'figureFolder1'); % Subfolder specific 
-if ~isdir(fDir1) %#ok<ISDIR>
+if ~isdir(fDir1)
     mkdir(fDir1)
 end
 dDir = 'dataFolder'; % Folder for figures
-if ~isdir(dDir) %#ok<ISDIR>
+if ~isdir(dDir)
     mkdir(dDir)
 end
 dDir1 = fullfile(dDir,'dataFolder_Arnold_Classic_Symmetric_test');
@@ -214,35 +214,53 @@ for dIdx = 1: length(DVec)
     ylabel('$\Im(s_R) \;\; \rm{[-]}$','interpreter','latex','FontSize', fs+2); %'Position', [-0.5 -D]
     pngname = fullfile(fDir,strrep(strrep(strrep(matName,'.mat',''),'STRUTTscheKarte','CharExp'),'_unt0',''));
     print(pngname, '-dpng')
-
-    hold on; grid on;
-
-    %% scatter plots real part char. eponent vs imaginary part
-    figure; 
-    % scatter(real(s_R_full(:)), imag(s_R_full(:)), 12, nu_full(:), 'filled');
-    scatter(CharEx(:,3), CharEx(:,7), 40, xachse, 'filled');
-hold on;
-scatter(CharEx(:,4), CharEx(:,8), 40, xachse, 'd');
-
-    % Vertical backbone at Re(s) = -D
-    xline(-D, 'r--', 'LineWidth', 1.2, 'DisplayName', sprintf('\\sigma = -D = -%.2f', D));
-    xline(0, 'k-', 'LineWidth', 1.0, 'DisplayName', 'Instability Boundary \sigma = 0');
-
-    % Horizontal line at Im(s) = 0 (amplification factor zero)
-    yline(0, 'r--', 'LineWidth', 1.2, 'DisplayName', 'Amplification \nu_0^2 = 0');
-
-    xlim([-0.4 0.15]); 
-    ylim([-3.2 3.2]);
-
-    xlabel('\Re(s_R)', 'FontSize', 12);
-    ylabel('\Im(s_R)', 'FontSize', 12);
-    title('Charakteristische Exponenten s_R', 'FontSize', 13);
-
-    cb2 = colorbar; 
-    cb2.Label.String = '\nu_0^2 = \nu_c^2';
-
-    legend('Location', 'northeast');
 end
+%% === PREPARE DATA FOR ABBILDUNG 3.56 FROM EXISTING CharEx ===
+% Use only diagonal entries: nu_02 == nu_C2 (already stored in CharEx)
+nu_vals = CharEx(:,1);              % nu_0^2 = nu_C^2
+mu_all  = CharEx(:,9:10);           % Floquet multipliers (complex)
+s_R_all = complex(CharEx(:,3:4), ... % real part
+    CharEx(:,7:8));    % imag part (with branch correction)
+%% === PLOTTING FIG 3.56 ===
+fig356 = figure('Name', 'Abbildung 3.56', 'Color', 'w');
+pos0 = get(0, 'defaultFigurePosition');
+fig356.Position = [pos0(1), pos0(2)-0.15*pos0(4), pos0(3)*1.5, pos0(4)*1.1];
+%% --- LEFT PLOT: FLOQUET MULTIPLIERS mu_S ---
+subplot(1, 2, 1);
+hold on; grid on; axis equal;
+% Unit circle (|mu| = 1) and damped baseline circle (|mu| = e^(-D*T))
+th = linspace(0, 2*pi, 300);
+plot(cos(th), sin(th), 'k:', 'LineWidth', 1, ...
+    'DisplayName', 'Unit Circle |\mu| = 1');
+r_damped = exp(-D*T);
+plot(r_damped*cos(th), r_damped*sin(th), 'Color', [0.4 0.2 0.6], 'LineWidth', 1.5, ...
+    'DisplayName', sprintf('Damped Radius e^{-DT} (D=%.2f)', D));
+scatter(real(mu_all(:,1)), imag(mu_all(:,1)), 12, nu_vals, 'filled');
+scatter(real(mu_all(:,2)), imag(mu_all(:,2)), 12, nu_vals, 'filled');
+xline(0, 'k--', 'Alpha', 0.3, 'HandleVisibility', 'off');
+yline(0, 'k--', 'Alpha', 0.3, 'HandleVisibility', 'off');
+xlim([-1.3 1.3]); ylim([-1.3 1.3]);
+xlabel('\Re(\mu_S)', 'FontSize', 12);
+ylabel('\Im(\mu_S)', 'FontSize', 12);
+title('Floquet-Multiplikatoren \mu_S', 'FontSize', 13);
+cb1 = colorbar; cb1.Label.String = '\nu_0^2 = \nu_c^2';
+legend('Location', 'northeast');
+%% --- RIGHT PLOT: CHARACTERISTIC EXPONENTS s_R ---
+subplot(1, 2, 2);
+hold on; grid on;
+scatter(real(s_R_all(:,1)), imag(s_R_all(:,1)), 12, nu_vals, 'filled');
+scatter(real(s_R_all(:,2)), imag(s_R_all(:,2)), 12, nu_vals, 'filled');
+% Vertical backbone at Re(s) = -D
+xline(-D, 'r--', 'LineWidth', 1.2, ...
+    'DisplayName', sprintf('\\sigma = -D = -%.2f', D));
+xline(0, 'k-', 'LineWidth', 1.0, ...
+    'DisplayName', 'Instability Boundary \sigma = 0');
+xlim([-0.4 0.15]); ylim([-3.2 3.2]);
+xlabel('\Re(s_R)', 'FontSize', 12);
+ylabel('\Im(s_R)', 'FontSize', 12);
+title('Charakteristische Exponenten s_R', 'FontSize', 13);
+cb2 = colorbar; cb2.Label.String = '\nu_0^2 = \nu_c^2';
+legend('Location', 'northeast');
 %%
 % This function was part of the original code snippet (appended at the end)
 % and is required by the main script for calculating characteristic exponents.
@@ -253,12 +271,12 @@ function  [Eig, buffer] = correctImagValues(Eig, buffer)
 % - buffer struct: Puffer mit letzten Werten fuer Maximum und Minimum
 % Outputs
 % - Eig: Struct mit angehaengtem, korrigierten Imaginaerteilen
-% - buffer struct: Puffer ueberschrieben mit neuen Werten fuer Maximum und Minimum
+% - buffer: Puffer ueberschrieben mit neuen Werten fuer Maximum und Minimum
 % Zwei Checks fuer das korrekte Format
 if nargin~= 2
     error('Two inputs are expected: The current imaginary part of the eigenvalues and the buffer with the last values');
 end
-if max(size(Eig.Imag))~= 2 || min(size(Eig.Imag))~= 1
+if max(size(Eig.Imag))~=2 || min(size(Eig.Imag))~=1
     error('The current imaginary parts of an eigenvalue pair is expected');
 end
 % Sortiere Imaginaerteil
@@ -266,12 +284,10 @@ Eig.ImagSort = sort(Eig.Imag);
 % Imaginaeranteil kontinuierlich steigend oder fallend
 tmp = Eig.ImagSort(2);
 tmpNeg = Eig.ImagSort(1);
-
 % Initialize buffer.Pos/buffer.Neg if they don't exist, though they should be
 % initialized in the main loop to 0
 if ~isfield(buffer, 'Pos'), buffer.Pos = 0; end
 if ~isfield(buffer, 'Neg'), buffer.Neg = 0; end
-
 if buffer.Pos <= tmp || (abs(tmp) < 10^-5) % Wert uebernehmen
     Eig.ImagCorrected = tmp; % steigender pos. Wert
     Eig.ImagCorrectedNeg = tmpNeg;  % fallender neg. Wert
