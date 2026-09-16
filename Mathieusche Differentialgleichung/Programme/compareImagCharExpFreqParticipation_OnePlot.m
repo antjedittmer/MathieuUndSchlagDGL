@@ -30,7 +30,7 @@ D = 0.15;
 x0 = eye(2);
 useOldData = 0;
 
-loadData = 1;
+loadData = 0;
 
 %% === 1. LOAD ARNOLD REFERENCE DATA (optional) ===
 dDirA = fullfile('dataFolder', 'dataFolder_Arnold_Classic_Symmetric_test');

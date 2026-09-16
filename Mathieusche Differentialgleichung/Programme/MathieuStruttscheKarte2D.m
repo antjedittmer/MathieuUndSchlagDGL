@@ -2,7 +2,7 @@
 % Berechnung der Struttschen Karten in den Grenzen von nu_02 und nu_C2
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 clc; clear; close all;
-loadMat = 1;  % mat-file laden, wenn Ergebnisse mit gleichem D vorhanden
+loadMat = 0;  % mat-file laden, wenn Ergebnisse mit gleichem D vorhanden
 SW = 0.05; %stepwidth
 unt0 = 0;
 untC = 0;
@@ -90,6 +90,9 @@ for dIdx = 1: length(DVec)
                 
                 % Characteristic Multipliers (Eigenwerte der Monodromiematrix)
                 eP = eig(Monodromie);
+                [~, iS] = sort(imag(eP), 'descend');  % larger |mu| = less damped branch
+                eP = eP(iS);
+
                 %% Charakteristische Exponenten
                 if nu_C2 == nu_02
                     % Berechne Real-und Imaginaerteile der Exponenten
@@ -107,6 +110,8 @@ for dIdx = 1: length(DVec)
                     end
                     
                     ImagEigSortN = [Eig.ImagCorrectedNeg, Eig.ImagCorrected] + [-n,n];
+
+
                     CharEx(oidx,:) = [nu_02, nu_C2, Eig.Real', min(Eig.ImagSort), max(Eig.ImagSort), ImagEigSortN, eP', Eig.Imag', Eig.ImagCorrected];
                     nAddVector(oidx) = n;
                     oidx = oidx + 1;
@@ -235,6 +240,9 @@ if max(size(Eig.Imag))~= 2 || min(size(Eig.Imag))~= 1
 end
 % Sortiere Imaginaerteil
 Eig.ImagSort = sort(Eig.Imag);
+[Eig.ImagSort,idxSort] = sort(Eig.Imag);
+Eig.Real = Eig.Real(idxSort);
+
 % Imaginaeranteil kontinuierlich steigend oder fallend
 tmp = Eig.ImagSort(2);
 tmpNeg = Eig.ImagSort(1);
@@ -257,6 +265,13 @@ else  % 'korrigierten' Wert nehmen fuer kontinuierlichen Verlauf
     Eig.ImagCorrected = 2*buffer.Pos  + tmpNeg; % korrigierter pos. Wert
     Eig.ImagCorrectedNeg  = 2*buffer.Neg + tmp; % korrigierter neg. Wert
 end
+
+% if Eig.ImagCorrected == Eig.ImagCorrectedNeg
+%         [~,idx] = sort(abs(Eig.Real));
+%         Eig.Real = Eig.Real(idx);
+% end
+
+
 % Buffer ueberschreiben mit aktuellem Wert
 buffer.Pos = max(tmp,buffer.Pos); % Maximum speichern
 buffer.Neg = min(tmpNeg,buffer.Neg); % Minimum speichern

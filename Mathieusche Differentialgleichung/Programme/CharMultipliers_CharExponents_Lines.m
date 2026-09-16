@@ -4,36 +4,102 @@ clear; clc; close all;
 Omega = 1;
 T = 2*pi/Omega;
 nu_vals = linspace(0, 9, 600);
-m_range = -4:4;
-N_FFT = 2048;
 D = 0.15;
 x0 = eye(2);
+odeOpt = odeset('RelTol', 1e-10, 'AbsTol', 1e-12);
+
+% Tie-break inside a bubble (both exponents share the same Im there, see below)
+%   'analytic'  : principal branch of sqrt(discriminant)  -> +Im branch always
+%                 takes the same side of sigma = -D
+%   'alternate' : tie-break flipped in every second bubble -> ladder rungs
+%                 open alternately to the left and to the right
+bubbleSide =  'analytic'; %'alternate'; %
 
 %% === PRE-ALLOCATION ===
-multipliers_all = zeros(length(nu_vals), 2);
-exponents_all = zeros(length(nu_vals), 2);
+nk = numel(nu_vals);
+multipliers_all = zeros(nk, 2);   % col 1: +Im(s) branch, col 2: -Im(s) branch
+exponents_all   = zeros(nk, 2);   % same ordering
+omega_all       = zeros(nk, 1);   % unfolded |Im(s)|
+m_add           = zeros(nk, 1);   % addition factor m in s = log(mu)/T + i*m*Omega
+logBranch       = zeros(nk, 1);   % sign of the principal log branch used
+isBubble        = false(nk, 1);   % real multiplier pair (tongue / bubble)
+
+% Continuation state for the unwrapped Floquet angle theta = omega*T
+sig  = +1;   % current sign of the folded angle
+base = 0;    % accumulated 2*pi*m offset  -> m = base/(2*pi)
+seenComplex  = false;
+theta_f_prev = 0;
+nBubble      = 0;    % counter of real tongues (for 'alternate')
 
 %% === MAIN COMPUTATION LOOP ===
-for k = 1:length(nu_vals)
+for k = 1:nk
     nu = nu_vals(k);
 
     % Solve Monodromy Matrix over one period T
     ode_mat = @(t, x) [0, 1; -(nu + nu*cos(Omega*t)), -2*D] * reshape(x, 2, 2);
-    [~, sol_raw] = ode45(@(t, x) reshape(ode_mat(t, x), 4, 1), [0, T], reshape(x0, 4, 1));
+    [~, sol_raw] = ode45(@(t, x) reshape(ode_mat(t, x), 4, 1), [0, T], reshape(x0, 4, 1), odeOpt);
     Phi_T = reshape(sol_raw(end, :), 2, 2);
 
-    % 1. Extract Floquet Multipliers (Eigenvalues of Monodromy Matrix)
-    mu_vals = eig(Phi_T);
-    multipliers_all(k, :) = mu_vals.';
+    tau  = trace(Phi_T);
+    dPhi = det(Phi_T);                            % = exp(-2*D*T)
+    rho  = sqrt(dPhi);
 
-    % 2. Compute Characteristic Exponents: s_R = ln(mu) / T
-    s_vals = log(mu_vals) / T;
-    exponents_all(k, :) = s_vals.';
+    % 1. Folded Floquet angle:  cos(theta) = tau/(2*rho)
+    cth = tau / (2*rho);
+    isBubble(k) = abs(cth) >= 1;                  % real pair -> theta locked at 0 or pi
+    theta_f = acos(min(max(cth, -1), 1));         % folded angle, in [0, pi]
+
+    % 2. ADDITION TERM: unwrap theta by reflection at every bubble exit.
+    if k > 1 && isBubble(k-1) && ~isBubble(k) && seenComplex
+        theta_prev = base + sig*theta_f_prev;
+        sig  = -sig;
+        base = theta_prev - sig*theta_f_prev;     % keep theta continuous
+    end
+    if k > 1 && ~isBubble(k-1) && isBubble(k), nBubble = nBubble + 1; end
+    if ~isBubble(k), seenComplex = true; end
+
+    theta_un = base + sig*theta_f;                % unwrapped angle
+    omega    = theta_un / T;                      % Im(s_R) incl. addition term
+    theta_f_prev = theta_f;
+
+    % 3. Multipliers from the analytic branch of the discriminant.
+    %    sqrt() is the principal branch, so mu_A = (tau + sqrt(disc))/2 is the
+    %    continuation of the multiplier with Im >= 0 through the branch points
+    %    at disc = 0. No sorting by |mu| is involved.
+    sq   = sqrt(tau^2 - 4*dPhi);
+    mu_A = (tau + sq)/2;
+    mu_B = (tau - sq)/2;
+
+    % Order by the imaginary part of the EXPONENT: after every reflection the
+    % rung +omega is carried by the other multiplier, hence the swap with sig.
+    if sig > 0
+        mu_1 = mu_A; mu_2 = mu_B;
+    else
+        mu_1 = mu_B; mu_2 = mu_A;
+    end
+    if isBubble(k) && strcmp(bubbleSide, 'alternate') && mod(nBubble, 2) == 0
+        [mu_1, mu_2] = deal(mu_2, mu_1);          % free tie-break, see note below
+    end
+
+    if isBubble(k) && ~seenComplex     % initial overdamped range, nu -> 0
+        [mu_1, mu_2] = deal(mu_2, mu_1);
+    end
+
+    multipliers_all(k, :) = [mu_1, mu_2];
+    exponents_all(k, :)   = [log(abs(mu_1))/T + 1i*omega, ...
+        log(abs(mu_2))/T - 1i*omega];
+    omega_all(k)  = omega;
+    m_add(k)      = base / (2*pi);                % integer addition factor m
+    logBranch(k)  = sig;
 end
 
-%% === PLOTTING (REPRODUCING FIGURE 3.56) ===
+% Consistency check: exp(s*T) must reproduce mu
+fprintf('max |exp(s*T) - mu| = %.3e\n', ...
+    max(max(abs(exp(exponents_all*T) - multipliers_all))));
+
+%% === PLOTTING ===
 pos0 = get(0, 'defaultFigurePosition');
-fig = figure('Name', 'Floquet Multipliers and Exponents (Figure 3.56 Replica)', 'Color', 'w');
+fig = figure('Name', 'Floquet Multipliers and Exponents', 'Color', 'w');
 fig.Position = [pos0(1), pos0(2) - 0.2*pos0(4), 2*pos0(3), 1.2*pos0(4)];
 
 tiledlayout(1, 2, 'Padding', 'compact', 'TileSpacing', 'loose');
@@ -42,16 +108,14 @@ tiledlayout(1, 2, 'Padding', 'compact', 'TileSpacing', 'loose');
 nexttile;
 hold on; grid on; axis equal;
 
-% Draw Unit Circle (|mu| = 1) and Inner Reference Circle (e^(-D*T))
 th = linspace(0, 2*pi, 300);
 plot(cos(th), sin(th), 'k--', 'LineWidth', 0.8, 'DisplayName', 'Unit Circle |\mu| = 1');
-plot(exp(-D*T)*cos(th), exp(-D*T)*sin(th), 'r:', 'LineWidth', 1, 'DisplayName', sprintf('Damped Circle e^{-D T} (D=%.2f)', D));
+plot(exp(-D*T)*cos(th), exp(-D*T)*sin(th), 'r:', 'LineWidth', 1, ...
+    'DisplayName', sprintf('Damped Circle e^{-D T} (D=%.2f)', D));
 
-% Scatter plot for Multipliers
 scatter(real(multipliers_all(:,1)), imag(multipliers_all(:,1)), 25, nu_vals, 'filled');
-scatter(real(multipliers_all(:,2)), imag(multipliers_all(:,2)), 25, nu_vals, 'filled');
+scatter(real(multipliers_all(:,2)), imag(multipliers_all(:,2)), 25, nu_vals, 'd');
 
-% Formatting
 xlabel('Re(\mu_s)', 'FontSize', 12);
 ylabel('Im(\mu_s)', 'FontSize', 12);
 title('Floquet Multipliers \mu_s', 'FontSize', 13);
@@ -65,19 +129,21 @@ cb1.Label.String = 'Amplification parameter \nu_c^2';
 nexttile;
 hold on; grid on;
 
-% Scatter plot for Positive and Negative Exponent Branches
+omMax = max(abs(omega_all));
+for kk = -ceil(2*omMax/Omega):ceil(2*omMax/Omega)
+    yline(kk*Omega/2, '-', 'Color', 0.85*ones(1,3), 'HandleVisibility', 'off');
+end
+
 scatter(real(exponents_all(:,1)), imag(exponents_all(:,1)), 25, nu_vals, 'filled');
-scatter(real(exponents_all(:,2)), imag(exponents_all(:,2)), 25, nu_vals, 'filled');
+scatter(real(exponents_all(:,2)), imag(exponents_all(:,2)), 40, nu_vals, 'd');
 
-% Highlight Stability Boundary (\sigma = 0)
-xline(0, 'r--', 'LineWidth', 1.2, 'DisplayName', 'Stability Boundary \sigma = 0');
-xline(-D, 'b:', 'LineWidth', 1.0, 'DisplayName', 'Mean Damping Rate \sigma = -D');
+xline(0,  'r--', 'LineWidth', 1.2, 'DisplayName', 'Stability Boundary \sigma = 0');
+xline(-D, 'b:',  'LineWidth', 1.0, 'DisplayName', 'Mean Damping Rate \sigma = -D');
 
-% Formatting
 xlabel('Re(s_R)', 'FontSize', 12);
 ylabel('Im(s_R)', 'FontSize', 12);
-title('Characteristic Exponents s_R = \sigma + i\omega', 'FontSize', 13);
-xlim([-0.45, 0.15]); ylim([-3.2, 3.2]);
+title('Characteristic Exponents s_R = \sigma + i\omega (unfolded)', 'FontSize', 13);
+xlim([-0.45, 0.15]); ylim(1.05*[-omMax, omMax]);
 yline(0, 'k-', 'HandleVisibility', 'off');
 
 cb2 = colorbar;
