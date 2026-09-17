@@ -1,8 +1,8 @@
- %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Berechnung der Struttschen Karten in den Grenzen von nu_02 und nu_C2
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 clc; clear; close all;
-loadMat = 0;  % mat-file laden, wenn Ergebnisse mit gleichem D vorhanden
+loadMat = 1;  % mat-file laden, wenn Ergebnisse mit gleichem D vorhanden
 SW = 0.05; %stepwidth
 unt0 = 0;
 untC = 0;
@@ -12,12 +12,12 @@ fDir = 'figureFolder'; % Folder for figures
 if ~isdir(fDir) %#ok<ISDIR>
     mkdir(fDir)
 end
-fDir1 = fullfile(fDir,'figureFolder1'); % Subfolder specific 
-if ~isdir(fDir1) %#ok<ISDIR>
+fDir1 = fullfile(fDir,'figureFolder1'); % Subfolder specific
+if ~isdir(fDir1)
     mkdir(fDir1)
 end
 dDir = 'dataFolder'; % Folder for figures
-if ~isdir(dDir) %#ok<ISDIR>
+if ~isdir(dDir)
     mkdir(dDir)
 end
 dDir1 = fullfile(dDir,'dataFolder_Arnold_Classic_Symmetric_test');
@@ -36,6 +36,9 @@ DVec = 0.15; %0.001; %[0.15; 0.001; 0.2]; 0.3; %
 %     sprintf('%2.1f',DVec(3))};
 t0 = 0.0;
 T = 2*pi;
+
+reproducePlotFromBook = 1;
+
 for dIdx = 1: length(DVec)
     D = DVec(dIdx);
     % Anfangsbedingungen
@@ -80,14 +83,14 @@ for dIdx = 1: length(DVec)
                 %wird in MonoVek geschrieben und diese zur Monodromiematrix
                 %zusammengesetzt
                 options = odeset('RelTol',1e-10,'AbsTol',1e-12);
-                
+
                 % DGL System muss als separate function 'MathieuDGL(psi,x,D,nu_02,nu_C2)' existieren
-                for k = 1 : Nz        
-                        sol = ode45(@(psi,x)MathieuDGL(psi,x,D,nu_02,nu_C2),[t0,T],Diagonal(:,k),options);
-                        MonoVek  = deval(sol,T);
-                        Monodromie(:,k) = MonoVek;
+                for k = 1 : Nz
+                    sol = ode45(@(psi,x)MathieuDGL(psi,x,D,nu_02,nu_C2),[t0,T],Diagonal(:,k),options);
+                    MonoVek  = deval(sol,T);
+                    Monodromie(:,k) = MonoVek;
                 end
-                
+
                 % Characteristic Multipliers (Eigenwerte der Monodromiematrix)
                 eP = eig(Monodromie);
                 [~, iS] = sort(imag(eP), 'descend');  % larger |mu| = less damped branch
@@ -108,7 +111,7 @@ for dIdx = 1: length(DVec)
                         n =  n + 0.5;
                         cntN = cntN+1;
                     end
-                    
+
                     ImagEigSortN = [Eig.ImagCorrectedNeg, Eig.ImagCorrected] + [-n,n];
 
 
@@ -220,6 +223,58 @@ for dIdx = 1: length(DVec)
     pngname = fullfile(fDir,strrep(strrep(strrep(matName,'.mat',''),'STRUTTscheKarte','CharExp'),'_unt0',''));
     print(pngname, '-dpng')
 end
+%% === PREPARE DATA FOR ABBILDUNG 3.56 FROM EXISTING CharEx ===
+% Use only diagonal entries: nu_02 == nu_C2 (already stored in CharEx)
+nu_vals = CharEx(:,1);              % nu_0^2 = nu_C^2
+mu_all  = CharEx(:,9:10);           % Floquet multipliers (complex)
+s_R_all = complex(CharEx(:,3:4), ... % real part
+    CharEx(:,7:8));    % imag part (with branch correction)
+if reproducePlotFromBook == 1
+    s_R_all = complex(sort(CharEx(:,3:4)','descend')', ... % real part
+        CharEx(:,7:8));    % imag part (with branch correction)
+end
+
+%% === PLOTTING FIG 3.56 ===
+fig356 = figure('Name', 'Abbildung 3.56', 'Color', 'w');
+pos0 = get(0, 'defaultFigurePosition');
+fig356.Position = [pos0(1), pos0(2)-0.15*pos0(4), pos0(3)*1.5, pos0(4)*1.1];
+%% --- LEFT PLOT: FLOQUET MULTIPLIERS mu_S ---
+subplot(1, 2, 1);
+hold on; grid on; axis equal;
+% Unit circle (|mu| = 1) and damped baseline circle (|mu| = e^(-D*T))
+th = linspace(0, 2*pi, 300);
+plot(cos(th), sin(th), 'k:', 'LineWidth', 1, ...
+    'DisplayName', 'Unit Circle |\mu| = 1');
+r_damped = exp(-D*T);
+plot(r_damped*cos(th), r_damped*sin(th), 'Color', [0.4 0.2 0.6], 'LineWidth', 1.5, ...
+    'DisplayName', sprintf('Damped Radius e^{-DT} (D=%.2f)', D));
+scatter(real(mu_all(:,1)), imag(mu_all(:,1)), 12, nu_vals, 'filled');
+scatter(real(mu_all(:,2)), imag(mu_all(:,2)), 12, nu_vals, 'filled');
+xline(0, 'k--', 'Alpha', 0.3, 'HandleVisibility', 'off');
+yline(0, 'k--', 'Alpha', 0.3, 'HandleVisibility', 'off');
+xlim([-1.3 1.3]); ylim([-1.3 1.3]);
+xlabel('\Re(\mu_S)', 'FontSize', 12);
+ylabel('\Im(\mu_S)', 'FontSize', 12);
+title('Floquet-Multiplikatoren \mu_S', 'FontSize', 13);
+cb1 = colorbar; cb1.Label.String = '\nu_0^2 = \nu_c^2';
+legend('Location', 'northeast');
+%% --- RIGHT PLOT: CHARACTERISTIC EXPONENTS s_R ---
+subplot(1, 2, 2);
+hold on; grid on;
+scatter(real(s_R_all(:,1)), imag(s_R_all(:,1)), 12, nu_vals, 'filled');
+scatter(real(s_R_all(:,2)), imag(s_R_all(:,2)), 12, nu_vals, 'filled');
+% Vertical backbone at Re(s) = -D
+xline(-D, 'r--', 'LineWidth', 1.2, ...
+    'DisplayName', sprintf('\\sigma = -D = -%.2f', D));
+xline(0, 'k-', 'LineWidth', 1.0, ...
+    'DisplayName', 'Instability Boundary \sigma = 0');
+xlim([-0.4 0.15]); ylim([-3.2 3.2]);
+xlabel('\Re(s_R)', 'FontSize', 12);
+ylabel('\Im(s_R)', 'FontSize', 12);
+title('Charakteristische Exponenten s_R', 'FontSize', 13);
+cb2 = colorbar; cb2.Label.String = '\nu_0^2 = \nu_c^2';
+legend('Location', 'northeast');
+
 %%
 % This function was part of the original code snippet (appended at the end)
 % and is required by the main script for calculating characteristic exponents.
@@ -230,12 +285,12 @@ function  [Eig, buffer] = correctImagValues(Eig, buffer)
 % - buffer struct: Puffer mit letzten Werten fuer Maximum und Minimum
 % Outputs
 % - Eig: Struct mit angehaengtem, korrigierten Imaginaerteilen
-% - buffer struct: Puffer ueberschrieben mit neuen Werten fuer Maximum und Minimum
+% - buffer: Puffer ueberschrieben mit neuen Werten fuer Maximum und Minimum
 % Zwei Checks fuer das korrekte Format
 if nargin~= 2
     error('Two inputs are expected: The current imaginary part of the eigenvalues and the buffer with the last values');
 end
-if max(size(Eig.Imag))~= 2 || min(size(Eig.Imag))~= 1
+if max(size(Eig.Imag))~=2 || min(size(Eig.Imag))~=1
     error('The current imaginary parts of an eigenvalue pair is expected');
 end
 % Sortiere Imaginaerteil
@@ -246,12 +301,10 @@ Eig.Real = Eig.Real(idxSort);
 % Imaginaeranteil kontinuierlich steigend oder fallend
 tmp = Eig.ImagSort(2);
 tmpNeg = Eig.ImagSort(1);
-
 % Initialize buffer.Pos/buffer.Neg if they don't exist, though they should be
 % initialized in the main loop to 0
 if ~isfield(buffer, 'Pos'), buffer.Pos = 0; end
 if ~isfield(buffer, 'Neg'), buffer.Neg = 0; end
-
 if buffer.Pos <= tmp || (abs(tmp) < 10^-5) % Wert uebernehmen
     Eig.ImagCorrected = tmp; % steigender pos. Wert
     Eig.ImagCorrectedNeg = tmpNeg;  % fallender neg. Wert
