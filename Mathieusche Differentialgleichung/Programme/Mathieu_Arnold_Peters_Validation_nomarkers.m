@@ -2,8 +2,8 @@
 % Mathieu_Floquet_Verification_m0_argmax.m (Periodicity, Diagnostics & SVG)
 %
 % Task: Reconstruct x(t) via Peters V(t) with THREE addition factors:
-%   (a) Arnold winding number m           (red markers)
-%   (b) m = 0, principal exponents        (green markers)
+%   (a) Arnold winding number n           (red markers)
+%   (b) n = 0, principal exponents        (green markers)
 %   (c) argmax-participation factor m_arg (magenta markers, only where
 %       it differs from the Arnold value, i.e. cases 2 and 3)
 % and validate all against direct ODE integration.
@@ -27,15 +27,14 @@ clc; clear; close all;
 
 %% 1. User Settings & Inputs
 D = 0.15;                        % Damping ratio
-nuInputList = [0.5, 5, 8];       % Amplification factors nu_c^2 (= nu_0^2)
-mFactorList = [0.5, 2, 2.5];     % Arnold addition factors for the shift
-mFactorArgmax = [0.5, 1.0, 1.5]; % Addition factors implied by dominant
+nuInputList = [0.7,5]; %, 8];       % Amplification factors nu_c^2 (= nu_0^2)
+mFactorList = [0.5,1]; %[0.5, 2, 2.5];     % Arnold addition factors for the shift
+mFactorArgmax = [2,2]; %[0.5, 1.0, 1.5]; % Addition factors implied by dominant
 % modal participation (argmax rule);
 % case 1 coincides with Arnold
-Tvec = [2*pi, 4*pi];                        % Parametric period (T = T)
+Tvec = [4*pi];                        % Parametric period (T = T)
 T = 2*pi;
 t0 = 0;
-
 Nz = 2;                          % Number of state dimensions
 
 % --- Setup for Figure Saving ---
@@ -52,7 +51,7 @@ AllResults = struct();
 structIdx = 1;
 
 %% 2. Execution Loop across Parameter Cases
-for TvecIdx = 2 %1: length(Tvec)
+for TvecIdx = 1: length(Tvec)
     Tlen = Tvec(TvecIdx);
     tGrid = 0:0.1:Tlen;              % 63 distinct timesteps (1x63 vector)
     
@@ -84,7 +83,7 @@ for TvecIdx = 2 %1: length(Tvec)
         nuC2 = nuIn;
 
         fprintf('\n=====================================================\n');
-        fprintf('Case %d: nu_c^2 = %.1f | Arnold m = %.1f | argmax m = %.1f\n', ...
+        fprintf('Case %d: nu_c^2 = %.1f | Arnold n = %.1f | argmax n = %.1f\n', ...
             caseIdx, nuIn, m_factor, m_arg);
         fprintf('=====================================================\n');
 
@@ -299,6 +298,7 @@ for TvecIdx = 2 %1: length(Tvec)
         nexttile;
         hold on; grid on;
         h1 = plot(tGrid, X_direct_cell{1}(1,:),   '-',  'LineWidth', lwDirect, 'Color', colDirect);
+       
         h5 = plot(tGrid, X_floquet0_cell{1}(1,:), '--', 'LineWidth', lwM0,     'Color', colM0);
         if doArgmax
             h7 = plot(tGrid, X_floquetA_cell{1}(1,:), '-.', 'LineWidth', lwArg, 'Color', colArg);
@@ -313,19 +313,31 @@ for TvecIdx = 2 %1: length(Tvec)
         h4 = plot(tGrid, X_floquet_cell{2}(1,:),  ':',  'LineWidth', lwArnold, 'Color', colArnold);
 
         ylabel('Displacement \phi(t)', 'FontSize', 11, 'FontWeight', 'bold');
+
+
+        str_m_arg = sprintf('Floquet [n] = %.1f', m_arg);
+        str_m_arg = strrep(strrep(str_m_arg,'0.5', '-1'),'.0','');
+        str_m_factor = sprintf('Floquet [n] = %.1f ', m_factor);
+        str_m_factor = strrep(strrep(str_m_factor,'0.5', '-1'),'.0','');
+
         if doArgmax
-            title(sprintf('Mathieu \\nu_c^2 = %.1f: Arnold m = %.1f, argmax m = %.1f, m = 0', ...
-                nuIn, m_factor, m_arg), 'FontSize', 12, 'FontWeight', 'bold');
+            titleStr = sprintf('Mathieu \\nu_c^2 = %.1f: [n] = %.1f, [n] = %.1f, [n] = 0', ...
+                nuIn, m_factor, m_arg);
+            titleStr = strrep(strrep(titleStr,'0.5', '-1'),'.0',''); %strrep(strrep(varName,'0.5', '-1'),'.0','');
+            title(titleStr, 'FontSize', 12, 'FontWeight', 'bold');
+
             legend([h1, h5, h7, h2], ...
-                'Direct ODE', 'Floquet m=0', ...
-                sprintf('Floquet m=%.1f (argmax)', m_arg), ...
-                sprintf('Floquet m=%.1f (Arnold)', m_factor), ...
+                'Direct ODE', 'Floquet [n] = 0', ...
+                str_m_arg, ...
+                str_m_factor, ...
                 'Location', 'best');
         else
-            title(sprintf('Mathieu Diagnostics: \\nu_c^2 = %.1f | m = %.1f (argmax = Arnold)', ...
-                nuIn, m_factor), 'FontSize', 12, 'FontWeight', 'bold');
+            titleStr = sprintf('Mathieu Diagnostics: \\nu_c^2 = %.1f | [n] = %.1f', ...
+                nuIn, m_factor);
+            titleStr = strrep(strrep(titleStr,'0.5', '-1'),'.0','');
+            title(titleStr, 'FontSize', 12, 'FontWeight', 'bold');
             legend([h1, h5, h2], ...
-                'Direct ODE', 'Floquet m=0', sprintf('Floquet m=%.1f', m_factor), ...
+                'Direct ODE', 'Floquet [n] = 0', str_m_factor, ...
                 'Location', 'best');
         end
         set(gca, 'XTick', 0:pi/2:Tlen, 'XTickLabel', {});
@@ -385,8 +397,9 @@ for TvecIdx = 2 %1: length(Tvec)
 
         % Colors per m-variant (same scheme as Step F); column 2 lighter
         colVar = {colM0, colArnold, colArg};              % m=0, Arnold, argmax
-        varName = {sprintf('m=0'), sprintf('m=%.1f (Arnold)', m_factor), ...
-            sprintf('m=%.1f (argmax)', m_arg)};
+        varName = {sprintf('[n] = 0'), sprintf('[n] = %.1f', m_factor), ...
+            sprintf('[n] = %.1f', m_arg)};
+        varName = strrep(strrep(varName,'0.5', '-1'),'.0','');
         Vset = {V0_t, V_t, VA_t};
         wset = {w0, wR, wA};
         nVar = 2 + doArgmax;                              % skip argmax if identical
