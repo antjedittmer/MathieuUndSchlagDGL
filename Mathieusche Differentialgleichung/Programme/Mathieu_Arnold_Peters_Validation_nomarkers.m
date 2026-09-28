@@ -28,7 +28,7 @@ clc; clear; close all;
 %% 1. User Settings & Inputs
 D = 0.15;                        % Damping ratio
 nuInputList = [0.7,5]; %, 8];       % Amplification factors nu_c^2 (= nu_0^2)
-mFactorList = [0.5,1]; %[0.5, 2, 2.5];     % Arnold addition factors for the shift
+mFactorList = [1,1]; %[0.5, 2, 2.5];     % Arnold addition factors for the shift
 mFactorArgmax = [2,2]; %[0.5, 1.0, 1.5]; % Addition factors implied by dominant
 % modal participation (argmax rule);
 % case 1 coincides with Arnold
