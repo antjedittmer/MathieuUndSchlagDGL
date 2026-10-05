@@ -362,10 +362,10 @@ end
 % --- Axis 5: Winding numbers ---
 axList(5) = nexttile;
 
-plot(nu_vals, m_bubble, '-', 'Color', 'b', 'LineWidth', 1, ...
+plot(nu_vals, floor(m_bubble), '-', 'Color', 'b', 'LineWidth', 1, ...
     'DisplayName', 'm bubble');
 hold on;
-plot(nu_vals, m_modpart, '--', 'Color', 'k', 'LineWidth', 1, ...
+plot(nu_vals, floor(m_modpart), '--', 'Color', 'k', 'LineWidth', 1, ...
     'DisplayName', 'm Peters');
 
 % Addition factor from the dominant participation: dots at the distPart
@@ -378,7 +378,7 @@ end
 for idx = 1:mAll
     if any(~isnan(mArgCurve(:,idx)))
         idxC = mod(idx-1,size(cl,1)) + 1;
-        plot(nu_vals, mArgCurve(:,idx), '.', 'Color', cl(idxC,:), ...
+        plot(nu_vals, floor(mArgCurve(:,idx)), '.', 'Color', cl(idxC,:), ...
             'MarkerSize', 12, 'HandleVisibility','off');
     end
 end

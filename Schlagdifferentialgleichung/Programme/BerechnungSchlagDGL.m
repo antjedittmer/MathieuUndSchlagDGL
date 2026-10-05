@@ -7,7 +7,7 @@ SW     = 0.01;
 t0     = 0.0;
 T      = 2*pi;
 plotAll = 0;
-loadMat = 0;
+loadMat = 1;
 
 excelDir = 'excelDir';
 if ~isfolder(excelDir); mkdir(excelDir); end
