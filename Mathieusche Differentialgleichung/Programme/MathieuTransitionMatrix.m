@@ -15,7 +15,7 @@ else
     strInterp = 'latex';
 end
 
-nu_vector = [0.25, 5, 8];
+nu_vector = [2,5]%[0.25, 5, 8];
 
 t0 = 0.0;
 T = 2*pi;

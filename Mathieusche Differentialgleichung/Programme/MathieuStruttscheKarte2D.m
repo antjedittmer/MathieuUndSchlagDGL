@@ -37,7 +37,7 @@ DVec = 0.15; %0.001; %[0.15; 0.001; 0.2]; 0.3; %
 t0 = 0.0;
 T = 2*pi;
 
-reproducePlotFromBook = 1;
+reproducePlotFromBook = 0;
 
 for dIdx = 1: length(DVec)
     D = DVec(dIdx);
