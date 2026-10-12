@@ -334,7 +334,6 @@ sgtitle('2D winding-number plots: phase plane and unwrapped angle', ...
 %% ------------------------------------------------------------------------
 %% Save all three figures as SVG files
 %% ------------------------------------------------------------------------
-%% Save figures as SVG files
 
 figureFolder = 'figureFolder';
 

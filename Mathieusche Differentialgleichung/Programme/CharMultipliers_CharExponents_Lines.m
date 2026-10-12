@@ -13,7 +13,7 @@ odeOpt  = odeset('RelTol', 1e-10, 'AbsTol', 1e-12);
 %                 takes the same side of sigma = -D
 %   'alternate' : tie-break flipped in every second bubble -> ladder rungs
 %                 open alternately to the left and to the right
-bubbleSide = 'analytic'; %'alternate'; %
+bubbleSide =   'analytic'; % 'alternate'; % 
 
 %% === PRE-ALLOCATION ===
 nk = numel(nu_vals);
@@ -67,21 +67,15 @@ for k = 1:nk
     %    continuation of the multiplier with Im >= 0 through the branch points
     %    at disc = 0. No sorting by |mu| is involved.
     sq   = sqrt(tau^2 - 4*dPhi);
-    mu_A = (tau + sq)/2;
-    mu_B = (tau - sq)/2;
+    mu_1 = (tau + sq)/2;
+    mu_2 = (tau - sq)/2;
 
     % Order by the imaginary part of the EXPONENT: after every reflection the
     % rung +omega is carried by the other multiplier, hence the swap with sig.
-    if sig > 0
-        mu_1 = mu_A; mu_2 = mu_B;
-    else
-        mu_1 = mu_B; mu_2 = mu_A;
-    end
-    if isBubble(k) && strcmp(bubbleSide, 'alternate') && mod(nBubble, 2) == 0
+    % if sig > 0,mu_1 = mu_A; mu_2 = mu_B; else, mu_1 = mu_B; mu_2 = mu_A;
+    % end
+    if isBubble(k) && strcmp(bubbleSide, 'analytic') && mod(nBubble, 2) == 0
         [mu_1, mu_2] = deal(mu_2, mu_1);          % free tie-break
-    end
-    if isBubble(k) && ~seenComplex                % initial overdamped range, nu -> 0
-        [mu_1, mu_2] = deal(mu_2, mu_1);
     end
 
     mu_all(k, :)  = [mu_1, mu_2];
