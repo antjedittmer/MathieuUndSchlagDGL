@@ -48,17 +48,19 @@ freqs_fft_m = (-(N_FFT/2) : (N_FFT/2-1));
 
 %% === PRE-ALLOCATION ===
 growth_rate       = zeros(n, 1);
-frequency_imag    = zeros(n, 1);
 composite_freq    = zeros(n, 1);
 participation_data = zeros(n, mAll);
 branch_freqs_all  = zeros(n, mAll);
-real_all          = zeros(n, 2);
 cond_A            = nan(n, 1);
 m_bubble          = zeros(n, 1);
 
+CharExRe          = zeros(n, 2);
+CharExIm          = zeros(n, 2);
+
 buffer.Pos = 0;
 buffer.Neg = 0;
-wasBubble  = false;
+nAdd = 1;
+prevAbsDiffCharMult = 0;
 
 %% === MAIN COMPUTATION LOOP ===
 for k = 1:n
@@ -79,35 +81,46 @@ for k = 1:n
     end
     cond_A(k) = cond(Phi_T);
 
-    % --- Extract Floquet Exponents ---
+    % --- Characteristic multipliers, sorted by their real part ---
+    % (same ordering and exponent definition as in BerechnungSchlagDGL.m)
     [V, L_mat] = eig(Phi_T);
-    eta_vals = log(diag(L_mat)) / T;
+    charMult = diag(L_mat).';
+    % complex-conjugate pairs have identical real parts: order them by the
+    % imaginary part (negative first) instead of relying on the eig order
+    [~, idxSort] = sortrows([real(charMult).', imag(charMult).']);
+    idxSort = idxSort.';
+    charMultSort = charMult(idxSort);
+    V = V(:, idxSort);
 
-    Eig.Imag = imag(eta_vals);
+    % --- Characteristic exponents ---
+    Eig.Real = 1/T * log(abs(charMultSort));
+    Eig.Imag = 1/T * atan(imag(charMultSort) ./ real(charMultSort));
     [Eig, buffer] = correctImagValues(Eig, buffer);
 
-    [~, idx2] = sort(imag(eta_vals), 'descend');
-    idx = idx2(1);
-
-    eta_mode = eta_vals(idx);
-    v_mode   = V(:, idx);
-    real_all(k, :) = real(eta_vals(idx2))';
-
-    % "Bubble" = the pair has split into two distinct real growth rates
-    % instead of remaining a complex-conjugate (oscillatory) pair.
-    isBubble = abs(real_all(k, 1) - real_all(k, 2)) > eps;
-
-    if k == 1
-        % m_bubble(1) stays 0
-    elseif isBubble && ~wasBubble
-        m_bubble(k) = m_bubble(k-1) + 0.5;
-    else
-        m_bubble(k) = m_bubble(k-1);
+    % --- Addition factor: +0.5 whenever the magnitude order of the
+    % multipliers flips (start at 1, as in BerechnungSchlagDGL.m) ---
+    absDiffCharMult = abs(charMultSort(1)) > abs(charMultSort(2));
+    if k > 1 && abs(prevAbsDiffCharMult - absDiffCharMult) > 0.1
+        nAdd = nAdd + 0.5;
     end
-    wasBubble = isBubble;
+    prevAbsDiffCharMult = absDiffCharMult;
+    m_bubble(k) = nAdd;
 
-    growth_rate(k)    = real(eta_mode);
-    frequency_imag(k) = mod(Eig.ImagCorrected, 0.5);
+    CharExRe(k, :) = Eig.Real;
+    CharExIm(k, :) = Eig.Imag + [-nAdd, nAdd];
+
+    % --- Mode for the harmonic participation: least damped exponent,
+    % i.e. the multiplier with the largest magnitude ---
+    % (complex-conjugate pair: equal magnitudes -> take the member with the
+    % positive imaginary part, as before)
+    magMult = abs(charMultSort);
+    cand = find(magMult >= max(magMult)*(1 - 1e-10));
+    [~, jCand] = max(imag(charMultSort(cand)));
+    idx = cand(jCand);
+    eta_mode = log(charMultSort(idx)) / T;
+    v_mode   = V(:, idx);
+
+    growth_rate(k) = real(eta_mode);
 
     % --- Harmonic participation via FFT of the periodic part ---
     Q_t = complex(zeros(N_FFT, 1));
@@ -141,7 +154,31 @@ for k = 1:n
 end
 
 %% === POST-PROCESSING ===
-omega_track = frequency_imag + m_bubble;
+% Corrected real and imaginary parts (as in BerechnungSchlagDGL.m): the
+% larger real part is mirrored about its value at mu = 0 to obtain the
+% smaller one, the imaginary parts follow the swap of the two branches.
+CharExRe1 = CharExRe(:, 1);
+CharExRe2 = CharExRe(:, 2);
+CharExRePos      = max(CharExRe1, CharExRe2);
+CharExRe1_NegIdx = abs(CharExRePos - CharExRe1) > eps;
+offset           = CharExRe1(1);
+CharExReNeg      = -(CharExRePos - offset) + offset;
+
+CharExRe1Cor = CharExRe1;
+CharExRe1Cor(CharExRe1_NegIdx)  = CharExReNeg(CharExRe1_NegIdx);
+CharExRe2Cor = CharExRe2;
+CharExRe2Cor(~CharExRe1_NegIdx) = CharExReNeg(~CharExRe1_NegIdx);
+
+CharExIm1 = CharExIm(:, 1);
+CharExIm2 = CharExIm(:, 2);
+noSwap = CharExRe1Cor == CharExRe1;
+CharExIm1Cor = -CharExIm2;
+CharExIm2Cor =  CharExIm2;
+CharExIm1Cor(noSwap) =  CharExIm1(noSwap);
+CharExIm2Cor(noSwap) = -CharExIm1(noSwap);
+
+real_all    = [CharExRe1Cor, CharExRe2Cor];
+omega_track = max(CharExIm1Cor, CharExIm2Cor);   % positive branch of the pair
 
 [sortedM, idxSortM] = sort(participation_data, 2, 'descend');
 sortedIndex = sortedM(:, 1:2);
@@ -152,12 +189,17 @@ diffSorted  = [0; diff(sortedIndex(:,2) - sortedIndex(:,1))];
 peak_prominence = 0.01;
 [pksD, locsD] = findpeaks(diffSorted, 'MinPeakProminence', peak_prominence);
 
+% Winding number after Peters, starting at the initial addition factor
+% (1 for the flap mode, whose frequency starts near 1/rev). The first
+% participation peak marks the first half step 0 -> 0.5 (Mathieu case);
+% when the count already starts at 1, the first frequency lock happens at
+% this integer value and adds no half step.
 m_modpart_raw = zeros(size(m_bubble));
-if ~isempty(locsD)
+if ~isempty(locsD) && m_bubble(1) == 0
     m_modpart_raw(locsD(1)) = 0.5;
 end
 m_modpart_raw(locsC) = 0.5;
-m_modpart = cumsum(m_modpart_raw);
+m_modpart = m_bubble(1) + cumsum(m_modpart_raw);
 
 idx_m_change = [false; diff(m_bubble) ~= 0];
 muChange     = mu_vals(idx_m_change);
@@ -289,9 +331,9 @@ set(gca, 'XTickLabel', []);
 
 % --- Axis 5: Winding numbers ---
 axList(5) = nexttile;
-plot(mu_vals, m_bubble, '-', 'Color', 'b', 'LineWidth', 1, 'DisplayName', 'm bubble');
+plot(mu_vals, floor(m_bubble), '-', 'Color', 'b', 'LineWidth', 1, 'DisplayName', 'm bubble');
 hold on;
-plot(mu_vals, m_modpart, '--', 'Color', 'k', 'LineWidth', 1, 'DisplayName', 'm Peters');
+plot(mu_vals, floor(m_modpart), '--', 'Color', 'k', 'LineWidth', 1, 'DisplayName', 'm Peters');
 
 mArgCurve = nan(n, mAll);
 for idxB = 1:mAll
@@ -300,7 +342,7 @@ end
 for idxB = 1:mAll
     if any(~isnan(mArgCurve(:, idxB)))
         idxC = mod(idxB-1, size(cl,1)) + 1;
-        plot(mu_vals, mArgCurve(:, idxB), '.', 'Color', cl(idxC,:), 'MarkerSize', 12, ...
+        plot(mu_vals, floor(mArgCurve(:, idxB)), '.', 'Color', cl(idxC,:), 'MarkerSize', 12, ...
             'HandleVisibility', 'off');
     end
 end
@@ -350,9 +392,9 @@ table4Excel.char_exp_imag_centroid = composite_freq;
 table4Excel.char_exp_imag_argmax   = freq_argmax;
 table4Excel.diff_centroid_track = composite_freq - omega_track;
 table4Excel.diff_argmax_track   = freq_argmax - omega_track;
-table4Excel.m_bubble  = m_bubble;
-table4Excel.m_modpart = m_modpart;
-table4Excel.m_argmax  = m_argmax;
+table4Excel.m_bubble  = floor(m_bubble);    % integer addition factors (as in the Mathieu figure)
+table4Excel.m_modpart = floor(m_modpart);
+table4Excel.m_argmax  = floor(m_argmax);
 table4Excel.m_sel_index = m_range(iMax)';
 table4Excel.cond_Phi   = cond_A;
 
@@ -372,32 +414,3 @@ tmpTableHarmPart = array2table(participation_data, 'VariableNames', colNamesPhi)
 table4ExcelAll = [table4Excel, tmpTableFreq, tmpTableHarmPart];
 writetable(table4ExcelAll, fullfile(excelDir, [basename, '.xlsx']));
 
-%% === LOCAL FUNCTION (unchanged from reference) ===
-function [Eig, buffer] = correctImagValues(Eig, buffer)
-% correctImagValues korrigiert die Imaginaerwerte fuer stetigen Verlauf
-if nargin ~= 2
-    error('Two inputs are expected: the current imaginary parts and the buffer.');
-end
-if max(size(Eig.Imag)) ~= 2 || min(size(Eig.Imag)) ~= 1
-    error('The current imaginary parts of an eigenvalue pair are expected.');
-end
-
-Eig.ImagSort = sort(Eig.Imag);
-tmp    = Eig.ImagSort(2);
-tmpNeg = Eig.ImagSort(1);
-
-if ~isfield(buffer, 'Pos'), buffer.Pos = 0; end
-if ~isfield(buffer, 'Neg'), buffer.Neg = 0; end
-
-if buffer.Pos <= tmp || (abs(tmp) < 1e-5)
-    Eig.ImagCorrected    = tmp;
-    Eig.ImagCorrectedNeg = tmpNeg;
-    buffer.Pos = 0;
-    buffer.Neg = 0;
-else
-    Eig.ImagCorrected    = 2*buffer.Pos + tmpNeg;
-    Eig.ImagCorrectedNeg = 2*buffer.Neg + tmp;
-end
-buffer.Pos = max(tmp, buffer.Pos);
-buffer.Neg = min(tmpNeg, buffer.Neg);
-end
