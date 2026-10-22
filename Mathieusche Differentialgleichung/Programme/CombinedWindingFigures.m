@@ -21,7 +21,7 @@ t0      = 0;
 tspan = t0:0.0001:T;
 
 % Parameter values
-nu_squared_vals = [0.25, 5];
+nu_squared_vals = [2, 5];
 
 % Initial conditions
 % First column: e1 = [1; 0]
@@ -209,7 +209,7 @@ for idx = 1:length(nu_squared_vals)
 end
 
 sgtitle( ...
-    'Combined winding-number visualization: $\nu_0^2=\nu_C^2=0.25$ and $5$', ...
+    'Combined winding-number visualization: $\nu_0^2=\nu_C^2=2$ and $5$', ...
     'Interpreter', 'latex', ...
     'FontSize', 14);
 

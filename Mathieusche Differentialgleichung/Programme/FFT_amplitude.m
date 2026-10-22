@@ -121,3 +121,5 @@ sgtitle(sprintf('Harmonic Participation Spectrum for $\\omega = %g$', w), 'Inter
 pngname = 'FFT_Amplitude';
 svgfile = fullfile(fDirPeters,[pngname,'.svg']);
 print(svgfile, '-dsvg');
+pngfile = fullfile(fDirPeters,[pngname,'.png']);
+print(pngfile, '-dpng');
