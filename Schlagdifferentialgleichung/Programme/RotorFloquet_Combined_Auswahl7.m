@@ -3,8 +3,7 @@ clc; clear variables; close all;
 %% === FOLDER SETUP ===
 excelDir = 'excelDir';
 if ~isfolder(excelDir), mkdir(excelDir); end
-figDir = 'figDir';
-if ~isfolder(figDir), mkdir(figDir); end
+figDir = 'figDir';   
 
 %% === ROTOR SELECTION ===
 % This combined-figure method (correctImagValues with Pos/Neg buffers,
@@ -31,7 +30,7 @@ d4    = Par(19, Auswahl);
 nu0   = Par(20, Auswahl);
 
 T  = 2*pi;
-SW = 0.1;
+SW = 0.05;
 MuMin = 0; MuMax = 10;
 mu_vals = MuMin:SW:MuMax;
 n = numel(mu_vals);

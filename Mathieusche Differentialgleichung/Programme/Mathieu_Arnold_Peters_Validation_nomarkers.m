@@ -373,7 +373,6 @@ for TvecIdx = 1: length(Tvec)
             caseIdx, nuIn, m_factor, m_arg);
         baseName = strrep(baseName, '.', 'dot');
         svgFileFull = fullfile(fDir, [baseName, '.svg']);
-
         print(hFig, svgFileFull, '-dsvg'); % Export as vector graphic file
 
 
