@@ -23,14 +23,15 @@ end
 %% === GLOBAL PARAMETERS ===
 Omega = 1;
 T = 2*pi/Omega;
-nu_vals = linspace(0, 9, 500);
+nu_vals = linspace(0, 9, 1000);
 m_range = -4:4;
 N_FFT = 2048;
 D = 0.15;
 x0 = eye(2);
 useOldData = 0;
 
-loadData = 0;
+useTitle = 0;
+loadData = 1;
 
 %% === 1. LOAD ARNOLD REFERENCE DATA (optional) ===
 dDirA = fullfile('dataFolder', 'dataFolder_Arnold_Classic_Symmetric_test');
@@ -159,7 +160,7 @@ else
 
     % Dominant two harmonics ("Mode 1" and "Mode 2") and their gap dynamics
     sortedIndex = sortedM(:, 1:2);
-    diffSorted = [0; diff(sortedIndex(:,2) - sortedIndex(:,1))];
+    clc;
 
     % Peaks of the composite (Peters) frequency
     [pksC, locsC] = findpeaks(composite_freq);
@@ -234,15 +235,17 @@ axList = gobjects(5,1);
 % --- Axis 1: Real parts of BOTH exponents (bubbles visible) ---
 axList(1) = nexttile;
 plot(nu_vals, real_all(:,1), '-',  'LineWidth', 1, 'Color', 'b', ...
-    'DisplayName', '\sigma_1 = Re(s_{R1})');
+    'DisplayName', '\sigma_1'); % = Re(s_{R1})
 hold on;
 plot(nu_vals, real_all(:,2), '--', 'LineWidth', 1, 'Color', 'b', ...
-    'DisplayName', '\sigma_2 = Re(s_{R2})');
-ylabel('\sigma = Re(s_R)');
+    'DisplayName', '\sigma_2'); %= Re(s_{R2})
+ylabel('Damping \sigma');
 
-title({['Mathieu ODE: x''''(t)+ 2Dx''(t) +(\nu_0^2 + \nu_c^2 cos(t))x(t) = 0,',...
-    sprintf(' D = %2.2f', D)] ...
-    });
+% Title on the layout so it is not clipped by the figure toolbar
+if useTitle == 1
+title(tlo, {['Mathieu ODE: x''''(t)+ 2Dx''(t) +(\nu_0^2 + \nu_c^2 cos(t))x(t) = 0,',...
+    sprintf(' D = %2.2f', D)]}, 'FontSize', 11, 'FontWeight', 'bold');
+end
 
 legend('Location','eastoutside','Box','off'); grid on; axis tight;
 set(gca, 'XTickLabel', []);
@@ -255,7 +258,7 @@ for idx = 1:size(branch_freqs_all,2)
     idxC  = mod(idx-1,size(cl,1)) + 1;
     hBr(idx) = plot(nu_vals, branch_freqs_all(:,idx), 'LineWidth', 1, ...
         'Color', clLight(idxC,:), 'LineStyle', lsCell{idxLs}, ...
-        'DisplayName', sprintf('m = %d', m_range(idx)));
+        'DisplayName', sprintf('n = %d', m_range(idx)));
     hold on;
 end
 
@@ -291,7 +294,7 @@ text(nu_vals(locsC(1)) - 0.6, pksC(1) + 0.75, ...
 axList(3) = nexttile;
 
 plot(nu_vals, freq_argmax - omega_arnold, '.', 'LineWidth', 1.7, ...
-    'Color',  0.5*ones(1,3), 'MarkerSize',15, 'DisplayName', '\omega_{max} - \omega_1');
+    'Color',  0.5*ones(1,3), 'MarkerSize',15, 'DisplayName', '\omega(\phi_{max}) - \omega_1');
 
 hold on;
 
@@ -311,7 +314,7 @@ for idx = 1:size(participation_data,2)
     idxC  = mod(idx-1,size(cl,1)) + 1;
     hPart(idx) = plot(nu_vals, participation_data(:,idx), 'LineWidth', 1, ...
         'Color', clLight(idxC,:), 'LineStyle', lsCell{idxLs}, ...
-        'DisplayName', sprintf('m = %d', m_range(idx)));
+        'DisplayName', sprintf('n = %d', m_range(idx)));
     hold on;
 end
 
@@ -348,25 +351,26 @@ ylabel('Mod. Part. \phi');
 legend(hPart, 'Location','eastoutside','Box','off'); grid on; axis tight;
 set(gca, 'XTickLabel', []);
 
-% In-plot labels (adjust coordinates to taste)
-text(0.45, 0.85, 'bold: dominant branch \phi_{max}', 'Color', 'k', ...
+% In-plot labels, vertically separated so they do not overlap
+text(0.45, 0.92, 'bold: dominant branch \phi_{max}', 'Color', 'k', ...
     'FontSize', 10, 'BackgroundColor', bcVec, 'Margin', 0.1);
-text(1, 0.67, '\Delta = \phi_{max} - \phi_{2nd}', 'Color', 'k', ...
-    'FontSize', 10, 'BackgroundColor', bcVec, 'Margin', 1);
+text(0.45, 0.68, '\Delta: change of \delta = \phi_{2nd} - \phi_{max} ', 'Color', 'k', ...
+    'FontSize', 10, 'BackgroundColor', bcVec, 'Margin', 0.1);
 if ~isempty(locsD)
     text(nu_vals(locsD(3)) + 0.5, diffSorted(locsD(3)) + 0.35, ...
-        'peaks \Delta', 'Color', 'k', 'FontSize', 10, ...
+        'peaks of \Delta', 'Color', 'k', 'FontSize', 10, ...
         'BackgroundColor', bcVec, 'Margin', 1);
 end
 
-% --- Axis 5: Winding numbers ---
+% --- Axis 5: Addition factors ---
 axList(5) = nexttile;
 
-plot(nu_vals, floor(m_bubble), '-', 'Color', 'b', 'LineWidth', 1, ...
-    'DisplayName', 'm bubble');
+% m_cl drawn first, thicker, so the agreement with m_phi stays visible
+plot(nu_vals, floor(m_bubble), '-', 'Color', 'b', 'LineWidth', 1.2, ...
+    'DisplayName', 'm_{cl}');
 hold on;
-plot(nu_vals, floor(m_modpart), '--', 'Color', 'k', 'LineWidth', 1, ...
-    'DisplayName', 'm Peters');
+plot(nu_vals, floor(m_modpart), '--', 'Color', 'k', 'LineWidth', 2.2, ...
+    'DisplayName', 'm_{\phi}');
 
 % Addition factor from the dominant participation: dots at the distPart
 % height of the selected branch, in the SAME colors as the bold segments
@@ -389,13 +393,8 @@ plot(NaN, NaN, '.', 'Color', 0.4*ones(1,3), 'MarkerSize', 12, ...
 ylabel('Add. factor m');
 xlabel('Periodic coefficient \nu_c^2 = \nu_0^2');
 legend('Location','eastoutside','Box','off'); grid on; axis tight;
-
-% Explanation of the vertical lines (placed once, in the last panel)
-%text(0.1, 0.85*max(m_bubble), 'vertical lines:', ...
-%    'Color', clVert, 'FontSize', 10, 'BackgroundColor', 'w', 'Margin', 1);
-%text(0.1, 0.7*max(m_bubble), 'change of m', ...
-%    'Color', clVert, 'FontSize', 10, 'BackgroundColor', 'w', 'Margin', 1);
-
+% headroom so the curves do not sit on the axis limits
+ylim([min(floor(m_bubble))-0.25, max(floor(m_bubble))+0.3]);
 
 % --- Dark blue vertical lines at every m-change, in ALL panels ---
 % Drawn as ordinary line objects (not xline/ConstantLine) so that text
@@ -409,15 +408,14 @@ for iAx = 1:5
     ylim(axList(iAx), yl);                  % restore (lines sit exactly on limits)
 end
 
-% Create arrow
+% Arrow from the "peaks of omega_mean" label to the first marked peak
 annotation(gcf,'arrow',[0.305714285714286 0.291428571428571],...
     [0.695188340807175 0.673766816143498]);
 
-% Create arrow
+% Arrows in the participation panel
 annotation(gcf,'arrow',[0.319285714285714 0.292857142857143],...
     [0.311219730941704 0.291479820627803]);
 
-% Create arrow
 annotation(gcf,'arrow',[0.234285714285714 0.160714285714286],...
     [0.355381165919283 0.304372197309417]);
 
@@ -429,12 +427,25 @@ xlim(axList(1), [nu_vals(1), nu_vals(end)]);
 set(findall(fig, '-property', 'FontSize'), 'FontSize', 11)
 
 %% === SAVE FIGURE ===
-basename = 'combined_char_exp_freq_participation_winding';
+basename = 'Mathiue_FloquetModalAnalysis';
 svgfile = fullfile(fDirPeters, [basename, '.svg']);
 pngfile = fullfile(fDirPeters, [basename, '.png']);
 print(fig, svgfile, '-dsvg');
 print(fig, pngfile, '-dpng', '-r300');
 fprintf('Figure saved: %s\n', svgfile);
+
+%% === CONSISTENCY CHECK: panel 3 vs panel 5 ===
+% The levels of omega(phi_max) - omega_1 should correspond to the
+% difference of the addition factors shown in panel 5.
+dOmegaArg = freq_argmax - omega_arnold;
+dMfac     = floor(m_argmax) - floor(m_bubble);
+fprintf('\nConsistency check (panel 3 vs panel 5):\n');
+fprintf('  unique levels of omega(phi_max) - omega_1 : %s\n', ...
+    mat2str(unique(round(dOmegaArg,3))'));
+fprintf('  unique levels of floor(m_argmax) - floor(m_cl): %s\n', ...
+    mat2str(unique(dMfac)'));
+fprintf('  samples where the two differ by more than 1e-6: %d of %d\n', ...
+    sum(abs(dOmegaArg - dMfac) > 1e-6), n);
 
 %% === EXPORT DATA TABLE ===
 table4Excel = table;
