@@ -3,11 +3,11 @@ clc; clear variables; close all;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Initialisierung
 
-SW     = 0.01;
+SW     = 0.5;
 t0     = 0.0;
 T      = 2*pi;
 plotAll = 0;
-loadMat = 1;
+loadMat = 0;
 
 excelDir = 'excelDir';
 if ~isfolder(excelDir); mkdir(excelDir); end
@@ -17,19 +17,19 @@ if ~isfolder(figDir); mkdir(figDir); end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Rotor-Auswahl
-
+% parameter
 AuswahlInfo = {
     1, 3, '3-Blatt-Rotor, see-saw';
     2, 3, '3-Blatt-Rotor, voll gelenkig';
-    3, 4, '4-Blatt-Rotor, voll gelenkig';
+    3, 4, '4-Blatt-Rotor, voll gelenkig'; % case should give approximately omega =1.03
     4, 5, '5-Blatt-Rotor, voll gelenkig';
     5, 3, '3-Blatt-Rotor, gelenk-/lagerlos';
-    6, 4, '4-Blatt-Rotor, gelenk-/lagerlos';
+    6, 4, '4-Blatt-Rotor, gelenk-/lagerlos'; % case 1.12
     7, 1, 'Einzelblattkoordinaten im rotierenden System'
     };
 
 
-for Auswahl = 7
+for Auswahl = 3
 
     %% Reset
     clearvars -except AuswahlInfo SW t0 T plotAll excelDir figDir Auswahl loadMat
@@ -40,7 +40,7 @@ for Auswahl = 7
     AnzGl  = Blatt * 2;
     b1     = AnzGl;
     nPairs = Blatt;
-    konstant = 0;
+    konstant = 1;
 
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     %% Parameter laden
@@ -57,7 +57,7 @@ for Auswahl = 7
     nu0   = Par(20, Auswahl);
 
     MuMin = 0;
-    MuMax = 10;
+    MuMax = 3;
     mu_paramVec = MuMin:SW:MuMax;
     nMu   = length(mu_paramVec);
 
@@ -182,6 +182,13 @@ for Auswahl = 7
 
             nAdd     = n * 2*pi / T;
             nAddVec  = [-nAdd*ones(1,nPairs), nAdd*ones(1,nPairs)];  % 1 x AnzGl
+            if Blatt >1
+                nAddVec(1)=nAddVec(1)-1;
+          
+                nAddVec(Blatt)=nAddVec(Blatt)+1;
+                 nAddVec(Blatt+1)=nAddVec(Blatt+1)-1;
+                  nAddVec(2*Blatt)=nAddVec(2*Blatt)+1;
+            end
 
             ImagEigSortN = [Eig.ImagCorrectedNeg, Eig.ImagCorrected] + nAddVec;
 
@@ -289,10 +296,14 @@ for Auswahl = 7
         'Location','northeastoutside');
 
     ax2(2) = nexttile;
+    if Blatt==1
     plot(mu_vec, CharExIm1Cor,   '-',   'Color', cl(1,:), 'LineWidth', 1.5); hold on;
     plot(mu_vec, CharExIm2Cor,   '-',   'Color', cl(2,:), 'LineWidth', 1.5);
     plot(mu_vec, CharExIm(:,1),  'k--', 'LineWidth', 1);
     plot(mu_vec, CharExIm(:,b1), 'k-.', 'LineWidth', 1);
+    else 
+        plot(mu_vec,CharExIm);
+    end
     grid on;
     xlabel('Advance ratio \mu (-)'); ylabel('Imaginary part (-)');
     legend('Im(Exp1) cor', sprintf('Im(Exp%d) cor', Blatt), ...
